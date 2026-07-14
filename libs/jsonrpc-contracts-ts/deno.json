@@ -1,0 +1,20 @@
+{
+  "name": "@devstation/jsonrpc-contracts-ts",
+  "exports": {
+    "./auth.gen.ts": "./src/auth.gen.ts",
+    "./blueprint.gen.ts": "./src/blueprint.gen.ts",
+    "./cluster.gen.ts": "./src/cluster.gen.ts",
+    "./size.gen.ts": "./src/size.gen.ts",
+    "./executions.gen.ts": "./src/executions.gen.ts",
+    "./station.gen.ts": "./src/station.gen.ts",
+    "./vault.gen.ts": "./src/vault.gen.ts",
+    "./codegen.ts": "./src/codegen.ts"
+  },
+  "imports": {
+    "@std/fs": "jsr:@std/fs@^1.0.23",
+    "@std/path": "jsr:@std/path@^1.1.4"
+  },
+  "tasks": {
+    "codegen": "deno run -A src/codegen.ts"
+  }
+}

@@ -1,0 +1,284 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core \u2014 Image",
+    "version": "1.0.0",
+    "description": "The image catalog: a central library of bootable OS images (name, OS, ISO/cloud-image URL) that clusters draw from to materialize templates. Catalog operations are protected \u2014 every call requires a valid sessionId. Removing a catalog entry never affects a cluster that already uses it."
+  },
+  "methods": [
+    {
+      "name": "image.register",
+      "description": "Registers a new OS image in the catalog.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ImageName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "os",
+          "required": true,
+          "schema": {
+            "title": "ImageOperatingSystem",
+            "type": "string",
+            "enum": [
+              "ubuntu-22-04",
+              "ubuntu-24-04",
+              "debian-12",
+              "debian-13"
+            ]
+          }
+        },
+        {
+          "name": "sourceUrl",
+          "required": true,
+          "schema": {
+            "title": "ImageSourceUrl",
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "image.update",
+      "description": "Updates an image catalog entry's name, OS and source URL.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ImageIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ImageName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "os",
+          "required": true,
+          "schema": {
+            "title": "ImageOperatingSystem",
+            "type": "string",
+            "enum": [
+              "ubuntu-22-04",
+              "ubuntu-24-04",
+              "debian-12",
+              "debian-13"
+            ]
+          }
+        },
+        {
+          "name": "sourceUrl",
+          "required": true,
+          "schema": {
+            "title": "ImageSourceUrl",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "image.unregister",
+      "description": "Unregisters an image catalog entry.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ImageIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "image.list",
+      "description": "Lists every image in the catalog.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "images",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ImageRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ImageRecord": {
+        "title": "ImageRecord",
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "os",
+          "sourceUrl",
+          "version",
+          "usages"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "usages": {
+            "title": "ImageRecordUsages",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageUsage"
+            }
+          }
+        }
+      },
+      "ImageUsage": {
+        "title": "ImageUsage",
+        "type": "object",
+        "description": "A cluster/node template where the catalog image is in use.",
+        "required": [
+          "clusterId",
+          "clusterName",
+          "nodeId",
+          "nodeName"
+        ],
+        "properties": {
+          "clusterId": {
+            "title": "ImageUsageClusterId",
+            "type": "string"
+          },
+          "clusterName": {
+            "title": "ImageUsageClusterName",
+            "type": "string"
+          },
+          "nodeId": {
+            "title": "ImageUsageNodeId",
+            "type": "string"
+          },
+          "nodeName": {
+            "title": "ImageUsageNodeName",
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

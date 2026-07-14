@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json
+name: argocd
+description: GitOps continuous delivery for Kubernetes
+version: 1.0.0
+compatibility:
+  os: [ubuntu-22-04, ubuntu-24-04, debian-12]
+
+host:
+  blueprint: k3s
+  role: server
+
+install:
+  - name: namespace
+    description: Create the argocd namespace (idempotent)
+    run: |
+      sudo k3s kubectl create namespace argocd --dry-run=client -o yaml | sudo k3s kubectl apply -f -
+    verify:
+      run: sudo k3s kubectl get namespace argocd >/dev/null 2>&1
+
+  - name: install
+    description: Apply ArgoCD upstream manifests and wait for rollout
+    run: |
+      # Server-side apply: the ApplicationSet CRD exceeds the 256KiB
+      # last-applied-configuration annotation limit of client-side apply.
+      sudo k3s kubectl apply --server-side -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+      # A fresh single-node k3s pulls every argocd image at once; containerd
+      # contention makes the first rollout slow — give it a generous window.
+      # The Deployment's own progressDeadlineSeconds (default 600s) otherwise
+      # trips first: once it does, the controller marks the rollout failed and
+      # `rollout status` aborts immediately, so the --timeout below never gets
+      # its full window. Raise the deadline past the wait so the pull can finish.
+      sudo k3s kubectl patch deployment -n argocd argocd-server \
+        -p '{"spec":{"progressDeadlineSeconds":1200}}'
+      sudo k3s kubectl rollout status -n argocd deployment/argocd-server --timeout=1200s
+    verify:
+      run: sudo k3s kubectl get deployment -n argocd argocd-server >/dev/null 2>&1
+
+uninstall:
+  - name: remove-manifests
+    description: Delete all ArgoCD resources installed from the upstream manifest
+    run: |
+      sudo k3s kubectl delete -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml \
+        --ignore-not-found=true 2>/dev/null || true
+    verify:
+      run: '! sudo k3s kubectl get deployment -n argocd argocd-server 2>/dev/null'
+      retry:
+        count: 12
+        intervalSeconds: 5
+
+  - name: remove-namespace
+    description: Delete the argocd namespace and all remaining resources within it
+    run: |
+      sudo k3s kubectl delete namespace argocd --ignore-not-found=true 2>/dev/null || true
+    verify:
+      run: '! sudo k3s kubectl get namespace argocd 2>/dev/null'
+      retry:
+        count: 18
+        intervalSeconds: 5

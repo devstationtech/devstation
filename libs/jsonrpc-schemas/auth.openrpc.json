@@ -1,0 +1,287 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core — Auth",
+    "version": "1.0.0",
+    "description": "Master password configuration, session creation and renewal."
+  },
+  "methods": [
+    {
+      "name": "auth.configured",
+      "description": "Reports whether the master password has already been configured. Public — used by the auth gate to decide between first-time setup and login.",
+      "params": [],
+      "result": {
+        "name": "configured",
+        "schema": {
+          "title": "AuthConfigured",
+          "type": "boolean"
+        }
+      },
+      "examples": [
+        {
+          "name": "not configured yet",
+          "params": [],
+          "result": { "name": "configured", "value": false }
+        }
+      ]
+    },
+    {
+      "name": "auth.resources",
+      "description": "Reports the local machine's CPU/RAM usage (where the core runs). Public — the UI header shows it from the first screen, before login. CPU% is delta-based across calls (the query keeps the previous /proc/stat sample server-side).",
+      "params": [],
+      "result": {
+        "name": "resources",
+        "schema": { "$ref": "#/components/schemas/AuthResources" }
+      }
+    },
+    {
+      "name": "auth.configure",
+      "description": "Sets the master password for first-time setup and returns the initial session. Fails if auth has already been configured.",
+      "params": [
+        {
+          "name": "password",
+          "description": "Master password (minimum 8 characters).",
+          "required": true,
+          "schema": {
+            "title": "MasterPassword",
+            "type": "string",
+            "minLength": 8
+          }
+        }
+      ],
+      "result": {
+        "name": "session",
+        "schema": {
+          "$ref": "#/components/schemas/AuthSession"
+        }
+      },
+      "errors": [
+        {
+          "code": -32603,
+          "message": "Authentication already configured."
+        }
+      ],
+      "examples": [
+        {
+          "name": "happy path",
+          "params": [
+            { "name": "password", "value": "my-strong-pass" }
+          ],
+          "result": {
+            "name": "session",
+            "value": {
+              "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+              "expiresAt": "2026-05-12T18:00:00.000Z"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth.authenticate",
+      "description": "Verifies the master password and opens a new session.",
+      "params": [
+        {
+          "name": "password",
+          "description": "Master password configured via auth.configure.",
+          "required": true,
+          "schema": {
+            "title": "MasterPasswordVerify",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "session",
+        "schema": {
+          "$ref": "#/components/schemas/AuthSession"
+        }
+      },
+      "errors": [
+        {
+          "code": -32603,
+          "message": "Authentication failed."
+        }
+      ]
+    },
+    {
+      "name": "auth.renew",
+      "description": "Refreshes a session before it expires. Clients should call this around (expiresAt - now) / 2 to keep the session warm.",
+      "params": [
+        {
+          "name": "sessionId",
+          "description": "Identifier of the session to refresh.",
+          "required": true,
+          "schema": {
+            "title": "AuthSessionIdRef",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "session",
+        "schema": {
+          "$ref": "#/components/schemas/AuthSession"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated — session unknown or expired."
+        }
+      ]
+    },
+    {
+      "name": "auth.token.generate",
+      "description": "Mints a scoped MCP access token from the calling session and persists it to ~/.devstation/mcp.json. The token carries the granted scopes and the sealed vault key — never the master password. Replaces any previously stored token.",
+      "params": [
+        {
+          "name": "sessionId",
+          "description": "Session minting the token; must be authenticated.",
+          "required": true,
+          "schema": { "title": "AuthTokenGenerateSessionRef", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "scopes",
+          "description": "Scopes the token grants (see the MCP scope catalogue).",
+          "required": true,
+          "schema": {
+            "title": "AuthTokenGenerateScopes",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        {
+          "name": "ttlDays",
+          "description": "Days until the token expires; null = never expires.",
+          "required": false,
+          "schema": { "title": "AuthTokenGenerateTtlDays", "type": ["number", "null"] }
+        }
+      ],
+      "result": {
+        "name": "token",
+        "schema": { "$ref": "#/components/schemas/AuthTokenSummary" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated — session unknown or expired." }
+      ]
+    },
+    {
+      "name": "auth.token.current",
+      "description": "Reports the currently stored MCP access token (id, scopes, timestamps) without any key material, or that none is configured.",
+      "params": [
+        {
+          "name": "sessionId",
+          "description": "Authenticated session making the query.",
+          "required": true,
+          "schema": { "title": "AuthTokenCurrentSessionRef", "type": "string", "format": "uuid" }
+        }
+      ],
+      "result": {
+        "name": "state",
+        "schema": { "$ref": "#/components/schemas/AuthTokenState" }
+      }
+    },
+    {
+      "name": "auth.token.revoke",
+      "description": "Deletes the stored MCP access token. The MCP port reverts to its read-only surface. Idempotent.",
+      "params": [
+        {
+          "name": "sessionId",
+          "description": "Authenticated session requesting revocation.",
+          "required": true,
+          "schema": { "title": "AuthTokenRevokeSessionRef", "type": "string", "format": "uuid" }
+        }
+      ],
+      "result": {
+        "name": "revoked",
+        "schema": { "$ref": "#/components/schemas/AuthTokenRevoked" }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "AuthTokenSummary": {
+        "title": "AuthTokenSummary",
+        "type": "object",
+        "description": "A stored MCP access token, key material excluded — safe to show.",
+        "required": ["id", "purpose", "scopes", "createdAt", "expiresAt"],
+        "properties": {
+          "id": { "title": "AuthTokenSummaryId", "type": "string", "format": "uuid" },
+          "purpose": { "title": "AuthTokenSummaryPurpose", "type": "string" },
+          "scopes": {
+            "title": "AuthTokenSummaryScopes",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "createdAt": {
+            "title": "AuthTokenSummaryCreatedAt",
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "title": "AuthTokenSummaryExpiresAt",
+            "description": "ISO 8601, or null when the token never expires.",
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "AuthTokenState": {
+        "title": "AuthTokenState",
+        "type": "object",
+        "description": "Whether an MCP access token is configured; the summary fields are present only when it is.",
+        "required": ["present"],
+        "properties": {
+          "present": { "title": "AuthTokenStatePresent", "type": "boolean" },
+          "id": { "title": "AuthTokenStateId", "type": "string" },
+          "purpose": { "title": "AuthTokenStatePurpose", "type": "string" },
+          "scopes": {
+            "title": "AuthTokenStateScopes",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "createdAt": { "title": "AuthTokenStateCreatedAt", "type": "string" },
+          "expiresAt": { "title": "AuthTokenStateExpiresAt", "type": ["string", "null"] }
+        }
+      },
+      "AuthTokenRevoked": {
+        "title": "AuthTokenRevoked",
+        "type": "object",
+        "description": "Result of a revoke call.",
+        "required": ["revoked"],
+        "properties": {
+          "revoked": { "title": "AuthTokenRevokedFlag", "type": "boolean" }
+        }
+      },
+      "AuthResources": {
+        "title": "AuthResources",
+        "type": "object",
+        "description": "Local host resource snapshot (0..100). cpuPercent is delta-based; the first call after server start returns 0.",
+        "required": ["cpuPercent", "ramPercent"],
+        "properties": {
+          "cpuPercent": { "title": "AuthResourcesCpuPercent", "type": "number" },
+          "ramPercent": { "title": "AuthResourcesRamPercent", "type": "number" }
+        }
+      },
+      "AuthSession": {
+        "title": "AuthSession",
+        "type": "object",
+        "description": "Authenticated session — opaque sessionId plus its absolute expiration in ISO 8601.",
+        "required": ["sessionId", "expiresAt"],
+        "properties": {
+          "sessionId": {
+            "title": "AuthSessionId",
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "title": "AuthSessionExpiresAt",
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    }
+  }
+}

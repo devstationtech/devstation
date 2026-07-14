@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json
+name: portainer
+description: Web UI for managing Docker containers and stacks
+version: 1.0.0
+compatibility:
+  os: [ubuntu-22-04, debian-12]
+
+host:
+  blueprint: docker
+  role: main
+
+install:
+  - name: deploy
+    description: Deploy Portainer CE container with persistent volume
+    run: |
+      docker volume create portainer_data || true
+      docker rm -f portainer 2>/dev/null || true
+      docker run -d --name portainer --restart=always \
+        -p 8000:8000 -p 9443:9443 \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v portainer_data:/data \
+        portainer/portainer-ce:latest
+    verify:
+      run: docker ps --format '{{.Names}}' | grep -q '^portainer$'
+
+  - name: publish-url
+    description: Save Portainer URL for dependent stacks
+    run: |
+      echo "PORTAINER_URL=https://${host}:9443"
+    publish:
+      fact:
+        portainerUrl: "stdout-line:PORTAINER_URL="
+
+uninstall:
+  - name: remove-portainer
+    description: Remove the Portainer container and its persistent data volume
+    run: |
+      docker rm -f portainer 2>/dev/null || true
+      docker volume rm -f portainer_data 2>/dev/null || true
+    verify:
+      run: "! docker ps -a --format '{{.Names}}' | grep -q '^portainer$'"

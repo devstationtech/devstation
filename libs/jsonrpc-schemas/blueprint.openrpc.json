@@ -1,0 +1,217 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core — Blueprint",
+    "version": "1.0.0",
+    "description": "Blueprints are the service stack catalog (parsed from YAML): roles, inputs, steps, placement and host topology. Read-only catalog — protected, every call requires a valid sessionId."
+  },
+  "methods": [
+    {
+      "name": "blueprint.list",
+      "description": "Lists every blueprint in the catalog.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        }
+      ],
+      "result": {
+        "name": "blueprints",
+        "schema": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/BlueprintRecord" }
+        }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    },
+    {
+      "name": "blueprint.byId",
+      "description": "Returns a single blueprint by id (== name). Fails if not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": { "title": "BlueprintId", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "blueprint",
+        "schema": { "$ref": "#/components/schemas/BlueprintRecord" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." },
+        { "code": -32603, "message": "Blueprint not found." }
+      ]
+    },
+    {
+      "name": "blueprint.validate",
+      "description": "Validates a candidate blueprint at a local path (a directory or a blueprint.yaml file) with the real parser, and reports whether its name already exists in the catalog. Public: read-only, no session. Used by `devstation blueprint register`.",
+      "params": [
+        {
+          "name": "path",
+          "required": true,
+          "schema": { "title": "BlueprintCandidatePath", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "validation",
+        "schema": { "$ref": "#/components/schemas/BlueprintValidationRecord" }
+      }
+    }
+  ],
+  "components": {
+    "schemas": {
+      "BlueprintValidationRecord": {
+        "title": "BlueprintValidationRecord",
+        "type": "object",
+        "description": "Result of validating a candidate blueprint with the real parser.",
+        "required": ["valid", "name", "error", "existing"],
+        "properties": {
+          "valid": { "title": "BlueprintValidationValid", "type": "boolean" },
+          "name": {
+            "title": "BlueprintValidationName",
+            "type": ["string", "null"],
+            "description": "The blueprint's declared name when valid; null otherwise."
+          },
+          "error": {
+            "title": "BlueprintValidationError",
+            "type": ["string", "null"],
+            "description": "The parser/validation error message when invalid; null otherwise."
+          },
+          "existing": {
+            "title": "BlueprintValidationExisting",
+            "type": ["string", "null"],
+            "enum": ["official", "local", null],
+            "description": "Origin of a catalog blueprint that already uses this name, or null if the name is free."
+          }
+        }
+      },
+      "BlueprintInputDeclRecord": {
+        "title": "BlueprintInputDeclRecord",
+        "type": "object",
+        "description": "Declared service input. `value` is the input's default value (absent when none). Wire field is `value` (the legacy domain field `default` is a TS reserved word and is mapped at the endpoint boundary).",
+        "required": ["name", "label", "type", "required"],
+        "properties": {
+          "name": { "title": "BlueprintInputName", "type": "string" },
+          "label": { "title": "BlueprintInputLabel", "type": "string" },
+          "type": { "title": "BlueprintInputType", "type": "string" },
+          "required": { "title": "BlueprintInputRequired", "type": "boolean" },
+          "value": { "title": "BlueprintInputValue", "type": ["string", "number", "boolean"] },
+          "help": { "title": "BlueprintInputHelp", "type": "string" }
+        }
+      },
+      "BlueprintStepRecord": {
+        "title": "BlueprintStepRecord",
+        "type": "object",
+        "required": ["name", "description", "hasVerify", "hasRollback"],
+        "properties": {
+          "name": { "title": "BlueprintStepName", "type": "string" },
+          "description": { "title": "BlueprintStepDescription", "type": "string" },
+          "hasVerify": { "title": "BlueprintStepHasVerify", "type": "boolean" },
+          "hasRollback": { "title": "BlueprintStepHasRollback", "type": "boolean" }
+        }
+      },
+      "BlueprintRoleRecord": {
+        "title": "BlueprintRoleRecord",
+        "type": "object",
+        "required": ["name", "instances", "steps"],
+        "properties": {
+          "name": { "title": "BlueprintRoleName", "type": "string" },
+          "instances": {
+            "title": "BlueprintRoleInstances",
+            "type": "string",
+            "enum": ["one", "many", "zeroOrMore"]
+          },
+          "steps": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BlueprintStepRecord" }
+          }
+        }
+      },
+      "BlueprintHostRecord": {
+        "title": "BlueprintHostRecord",
+        "description": "Host topology for hosted blueprints. Null for standalone blueprints.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["blueprint", "role"],
+            "properties": {
+              "blueprint": { "title": "BlueprintHostBlueprint", "type": "string" },
+              "role": { "title": "BlueprintHostRole", "type": "string" }
+            }
+          },
+          { "type": "null" }
+        ]
+      },
+      "BlueprintCompatibilityRecord": {
+        "title": "BlueprintCompatibilityRecord",
+        "type": "object",
+        "required": ["os"],
+        "properties": {
+          "os": {
+            "title": "BlueprintCompatibilityOs",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        }
+      },
+      "BlueprintRecord": {
+        "title": "BlueprintRecord",
+        "type": "object",
+        "description": "Blueprint catalog entry. Standalone: roles populated, host null. Hosted: empty roles, host set, steps populated.",
+        "required": [
+          "id",
+          "name",
+          "origin",
+          "description",
+          "version",
+          "compatibility",
+          "placement",
+          "inputs",
+          "roles",
+          "host",
+          "steps"
+        ],
+        "properties": {
+          "id": { "title": "BlueprintId", "type": "string" },
+          "name": { "title": "BlueprintName", "type": "string" },
+          "origin": {
+            "title": "BlueprintOrigin",
+            "type": "string",
+            "enum": ["official", "local"],
+            "description": "Where the blueprint came from: the bundled catalog (official) or the user's local overlay (local)."
+          },
+          "description": { "title": "BlueprintDescription", "type": "string" },
+          "version": { "title": "BlueprintVersion", "type": "string" },
+          "compatibility": { "$ref": "#/components/schemas/BlueprintCompatibilityRecord" },
+          "placement": {
+            "title": "BlueprintPlacement",
+            "type": "string",
+            "enum": ["exclusive", "shared"]
+          },
+          "inputs": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BlueprintInputDeclRecord" }
+          },
+          "roles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BlueprintRoleRecord" }
+          },
+          "host": { "$ref": "#/components/schemas/BlueprintHostRecord" },
+          "steps": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/BlueprintStepRecord" }
+          }
+        }
+      }
+    }
+  }
+}

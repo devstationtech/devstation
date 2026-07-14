@@ -1,0 +1,27 @@
+{
+  "name": "@devstation/server",
+  "exports": "./src/rpc.ts",
+  "imports": {
+    "@server/": "./src/",
+    "@tests/": "./tests/",
+    "@std/dotenv": "jsr:@std/dotenv@^0.225.6",
+    "@std/yaml": "jsr:@std/yaml@^1.0.6",
+    "hash-wasm": "npm:hash-wasm@^4.12.0",
+    "ajv/2020": "npm:ajv@^8.17.1/dist/2020.js",
+    "@modelcontextprotocol/sdk/server/index.js": "npm:@modelcontextprotocol/sdk@^1/server/index.js",
+    "@modelcontextprotocol/sdk/server/stdio.js": "npm:@modelcontextprotocol/sdk@^1/server/stdio.js",
+    "@modelcontextprotocol/sdk/client/index.js": "npm:@modelcontextprotocol/sdk@^1/client/index.js",
+    "@modelcontextprotocol/sdk/client/stdio.js": "npm:@modelcontextprotocol/sdk@^1/client/stdio.js",
+    "@modelcontextprotocol/sdk/types.js": "npm:@modelcontextprotocol/sdk@^1/types.js",
+    "ssh2": "npm:ssh2@^1.16"
+  },
+  "tasks": {
+    "dev": "deno run -A --unsafely-ignore-certificate-errors src/rpc.ts",
+    "check": "deno check src/rpc.ts",
+    "mcp:dev": "deno run -A --unsafely-ignore-certificate-errors src/mcp.ts",
+    "mcp:check": "deno check src/mcp.ts",
+    "mcp:serve": "deno run -A --unsafely-ignore-certificate-errors bin/devstation-server mcp serve",
+    "test:mutation": "npx --yes --package=@stryker-mutator/core@^8.7 stryker run tests/mutation/stryker.conf.mjs",
+    "build": "deno compile -A --include src/rpc.ts --include src/mcp.ts --output ../dist/devstation-server bin/devstation-server"
+  }
+}

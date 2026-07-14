@@ -1,0 +1,122 @@
+name: Release
+
+# Releases are created in the GitHub UI. Publishing a release triggers this
+# workflow: it builds every cross-platform binary, writes checksums and the
+# `latest.json` update manifest, and uploads them to that release with
+# `--clobber` (keep-existing — it never touches the release notes you wrote).
+# `workflow_dispatch` re-runs against an existing tag. Mirrors
+# devstationtech/harness. See docs/RELEASING.md.
+#
+# Fully GitHub-native: install.sh and the in-app self-update pull the manifest
+# and archives straight from `releases/latest/download/...` — no GitHub Pages,
+# no custom domain. Nothing to keep serving beyond the release assets.
+#
+# CI (fmt/lint/check/test) lives in main.yml and gates every push/PR to main —
+# this workflow trusts that main was green when the tag was cut.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag to (re)build and attach assets to (e.g. v0.0.1)"
+        required: true
+
+permissions:
+  contents: read
+
+# Two publishes of the same release must never race on the asset upload.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build · archive · attach
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Resolve the release tag
+        id: meta
+        run: |
+          tag="${{ github.event.release.tag_name || inputs.tag }}"
+          if [ -z "$tag" ]; then echo "no release tag" >&2; exit 1; fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout at the release tag
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Build all target binaries
+        run: deno task build:release -- --version "${{ steps.meta.outputs.version }}" --git-sha "$GITHUB_SHA"
+
+      - name: Checksums
+        run: deno task release:checksums
+
+      - name: Create latest manifest
+        run: deno task release:manifest -- --version "${{ steps.meta.outputs.version }}" --tag "${{ steps.meta.outputs.tag }}"
+
+      - name: Attach assets to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ steps.meta.outputs.tag }}" \
+            dist/devstation-linux-x64.tar.gz \
+            dist/devstation-darwin-x64.tar.gz \
+            dist/devstation-darwin-arm64.tar.gz \
+            dist/devstation-windows-x64.zip \
+            dist/checksums.txt \
+            dist/latest.json \
+            --clobber
+
+  notify:
+    name: Discord Notification
+    needs:
+      - release
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      RELEASE_RESULT: ${{ needs.release.result }}
+      RELEASE_TAG: ${{ needs.release.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - name: Send Discord webhook
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not configured; skipping notification."
+            exit 0
+          fi
+
+          if [ "$RELEASE_RESULT" = "success" ]; then
+            title="DevStation ${RELEASE_TAG:-release} published"
+            color=3066993
+          else
+            title="DevStation release failed"
+            color=15158332
+          fi
+
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg t "$title" \
+              --arg r "$RELEASE_RESULT" \
+              --arg v "${RELEASE_VERSION:-n/a}" --argjson c "$color" \
+              '{embeds: [{title: $t, color: $c, fields: [
+                {name: "version", value: $v, inline: true},
+                {name: "release", value: $r, inline: true}
+              ]}]}')" || echo "Discord notification failed (non-fatal)."

@@ -1,0 +1,126 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core — Size",
+    "version": "1.0.0",
+    "description": "Sizes are reusable provider-specific shapes (Proxmox VM size, etc.) that services pick from. Catalog operations are protected — every call requires a valid sessionId."
+  },
+  "methods": [
+    {
+      "name": "size.register",
+      "description": "Registers a new size.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": { "title": "SizeName", "type": "string" }
+        },
+        {
+          "name": "provider",
+          "required": true,
+          "schema": { "title": "SizeProvider", "type": "string" }
+        },
+        {
+          "name": "cpu",
+          "required": true,
+          "schema": { "title": "SizeCpu", "type": "integer" }
+        },
+        {
+          "name": "ram",
+          "required": true,
+          "schema": { "title": "SizeRam", "type": "integer" }
+        },
+        {
+          "name": "disk",
+          "required": true,
+          "schema": { "title": "SizeDisk", "type": "integer" }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": { "title": "ActorUser", "type": "string" }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": { "title": "ActorHostname", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": { "$ref": "#/components/schemas/Ack" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    },
+    {
+      "name": "size.unregister",
+      "description": "Removes a size from the catalog.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "sizeId",
+          "required": true,
+          "schema": { "title": "SizeId", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": { "$ref": "#/components/schemas/Ack" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    },
+    {
+      "name": "size.list",
+      "description": "Lists every size in the catalog.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        }
+      ],
+      "result": {
+        "name": "sizes",
+        "schema": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/SizeRecord" }
+        }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "SizeRecord": {
+        "title": "SizeRecord",
+        "type": "object",
+        "description": "Size summary for listing. cpu/ram/disk are present for Proxmox; absent for providers that don't model them.",
+        "required": ["id", "name", "provider", "version"],
+        "properties": {
+          "id": { "title": "SizeId", "type": "string" },
+          "name": { "title": "SizeName", "type": "string" },
+          "provider": { "title": "SizeProvider", "type": "string" },
+          "version": { "title": "SizeVersion", "type": "integer" },
+          "cpu": { "title": "SizeCpu", "type": "integer" },
+          "ram": { "title": "SizeRam", "type": "integer" },
+          "disk": { "title": "SizeDisk", "type": "integer" }
+        }
+      }
+    }
+  }
+}

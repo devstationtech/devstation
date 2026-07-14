@@ -1,0 +1,5 @@
+#!/usr/bin/env -S deno run -A
+
+import { command } from "@ui/cli/commands.ts";
+
+await command.parse(Deno.args);

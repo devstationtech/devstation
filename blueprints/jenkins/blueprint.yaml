@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json
+name: jenkins
+description: Jenkins LTS automation server with a Docker socket binding and a vault-backed admin
+version: 2.0.0
+compatibility:
+  os: [ubuntu-22-04, debian-12]
+
+host:
+  blueprint: portainer
+  role: main
+
+inputs:
+  - name: admin-user
+    label: Admin username
+    type: string
+    default: admin
+    help: "Jenkins admin account created on first boot."
+  - name: admin-password
+    label: Admin password
+    type: secret
+    required: true
+    help: "Password for the Jenkins admin account (stored in the vault)."
+
+install:
+  - name: security-script
+    description: Install the init.groovy.d bootstrap that creates the admin account on first boot
+    run: |
+      sudo mkdir -p /opt/devstation/jenkins/init.groovy.d
+      sudo tee /opt/devstation/jenkins/init.groovy.d/security.groovy >/dev/null <<'GROOVY_EOF'
+      ${file:security.groovy}
+      GROOVY_EOF
+      sudo chmod 644 /opt/devstation/jenkins/init.groovy.d/security.groovy
+    verify:
+      run: test -s /opt/devstation/jenkins/init.groovy.d/security.groovy
+
+  - name: deploy
+    description: Run the Jenkins LTS container on the Docker host
+    env:
+      # Unbraced $VAR in the shell below on purpose — blueprint templating
+      # reserves the brace form. These reach init.groovy.d/security.groovy
+      # inside the container, which creates the admin account on first boot.
+      JENKINS_ADMIN_USER: "${inputs.admin-user}"
+      JENKINS_ADMIN_PASSWORD: "${secrets.admin-password}"
+    run: |
+      docker volume create jenkins_home || true
+      docker rm -f jenkins 2>/dev/null || true
+      docker run -d --name jenkins --restart=unless-stopped \
+        -p 8081:8080 -p 50000:50000 \
+        -v jenkins_home:/var/jenkins_home \
+        -v /var/run/docker.sock:/var/run/docker.sock \
+        -v /opt/devstation/jenkins/init.groovy.d:/var/jenkins_home/init.groovy.d:ro \
+        -e JAVA_OPTS="-Djenkins.install.runSetupWizard=false" \
+        -e JENKINS_ADMIN_USER="$JENKINS_ADMIN_USER" \
+        -e JENKINS_ADMIN_PASSWORD="$JENKINS_ADMIN_PASSWORD" \
+        jenkins/jenkins:lts
+    verify:
+      run: docker ps --filter name=jenkins --format '{{.Status}}' | grep -q '^Up'
+      retry:
+        count: 10
+        intervalSeconds: 3
+
+  - name: verify-admin
+    description: Confirm the admin account answers and anonymous access is denied
+    run: |
+      true
+    verify:
+      run: |
+        CODE=$(curl -s -o /dev/null -w '%{http_code}' -u '${inputs.admin-user}:${secrets.admin-password}' http://localhost:8081/api/json)
+        ANON=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8081/api/json)
+        [ "$CODE" = "200" ] && [ "$ANON" = "403" ]
+      retry:
+        count: 30
+        intervalSeconds: 5
+
+uninstall:
+  - name: remove-jenkins
+    description: Remove the Jenkins container, its data volume and bootstrap files
+    run: |
+      docker rm -f jenkins 2>/dev/null || true
+      docker volume rm -f jenkins_home 2>/dev/null || true
+      sudo rm -rf /opt/devstation/jenkins
+    verify:
+      run: "! docker ps -a --format '{{.Names}}' | grep -q '^jenkins$'"

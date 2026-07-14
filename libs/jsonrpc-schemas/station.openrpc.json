@@ -1,0 +1,1137 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core \u2014 Station",
+    "version": "1.0.0",
+    "description": "Stations group services owned by a user \u2014 declarative inventory of what the user wants installed. Catalog operations are protected \u2014 every call requires a valid sessionId. `station.install` is long-running (LSP-style streaming via execution.event)."
+  },
+  "methods": [
+    {
+      "name": "station.services.byStation",
+      "description": "Lists every service that belongs to a given station. Used by the station detail screen and by the station orchestrator to decide what to install.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "StationServiceList",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StationServiceRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.services.byId",
+      "description": "Returns the service projection for a single id. Throws if the service is not found in any station.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ServiceIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/StationServiceRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.services.byBlueprint",
+      "description": "Filters services by blueprint name. Used by the hosted-blueprint register flow to pick a host service from the running standalone services of the matching blueprint.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "blueprint",
+          "required": true,
+          "schema": {
+            "title": "ServiceBlueprint",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "StationServiceList",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StationServiceRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.services.list",
+      "description": "Flattens every service across every station with provider/cluster/node enrichment for each instance and resolved host references for hosted services.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "StationServiceList",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StationServiceRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.instances.list",
+      "description": "Cross-provider VM projection used by the register-service form to pick instances per role. `busy`/`busyBy` cross-references the Service domain (the source of truth for VM occupancy).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "StationInstanceList",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StationInstanceRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.byId",
+      "description": "Returns the listing-friendly summary for a single station. Throws if the station is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/StationRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.list",
+      "description": "Lists every station in the catalog with derived status and service counts.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "StationList",
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StationRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.install",
+      "description": "Installs a chosen subset of services within a station as one orchestrated session. Returns `executionId` immediately \u2014 UI subscribes via `execution.watch(executionId)` to receive Log/Step/Succeeded/Failed/Cancelled events. Cancel via `execution.cancel(executionId)`. The handler validates the dependency closure (hosted services need their host either selected too or already INSTALLED) and runs in topological order.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "serviceIds",
+          "required": true,
+          "schema": {
+            "title": "StationServiceIds",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ExecutionStarted"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.uninstall",
+      "description": "Tears down a chosen subset of services within a station as one orchestrated session \u2014 the mirror of station.install. Returns `executionId` immediately; subscribe via execution.watch(executionId) for Log/Step/Succeeded/Failed/Cancelled. Runs each blueprint's uninstall steps in reverse topological order (dependents before their hosts) and validates the reverse dependency closure (a host can't be torn down while a hosted dependent stays installed unless it is included). Tolerates an already-gone host as already-uninstalled.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "serviceIds",
+          "required": true,
+          "schema": {
+            "title": "StationServiceIds",
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ExecutionStarted"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.services.unregister",
+      "description": "Unregisters a service from a station. Throws if the station or service is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "serviceId",
+          "required": true,
+          "schema": {
+            "title": "ServiceIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.services.register",
+      "description": "Registers a service inside an existing station. Provide `instances` for standalone blueprints or `host` for hosted blueprints (mutually exclusive). Rejects on duplicate service name within the station, unknown blueprint, role mismatch, or missing instances for declared roles.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ServiceName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "blueprint",
+          "required": true,
+          "schema": {
+            "title": "ServiceBlueprint",
+            "type": "string"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "ServiceVaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "inputs",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ServiceInputs"
+          }
+        },
+        {
+          "name": "secrets",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ServiceSecrets"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        },
+        {
+          "name": "instances",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ServiceInstanceList"
+          }
+        },
+        {
+          "name": "host",
+          "required": true,
+          "schema": {
+            "$ref": "#/components/schemas/ServiceHostRef"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.unregister",
+      "description": "Unregisters a station from the catalog. Throws if the station is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.update",
+      "description": "Updates the mutable metadata (name, description) of an existing station. Throws if the station is not found, or if the new name collides with another station.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "stationId",
+          "required": true,
+          "schema": {
+            "title": "StationIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "StationName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "description",
+          "required": true,
+          "schema": {
+            "title": "StationDescription",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "station.register",
+      "description": "Registers a new station in the catalog. Returns an Ack \u2014 the station id is generated server-side.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "StationName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "description",
+          "required": true,
+          "schema": {
+            "title": "StationDescription",
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ServiceInputs": {
+        "title": "ServiceInputs",
+        "type": "object",
+        "description": "Non-secret user inputs consumed by blueprint steps. Values may be strings, numbers, or booleans.",
+        "additionalProperties": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "boolean"
+            }
+          ]
+        }
+      },
+      "ServiceSecrets": {
+        "title": "ServiceSecrets",
+        "type": "object",
+        "description": "Map from secret slot to a secret id stored in the service's vault.",
+        "additionalProperties": {
+          "type": "string"
+        }
+      },
+      "ServiceInstance": {
+        "title": "ServiceInstance",
+        "type": "object",
+        "description": "Standalone-installation instance: declares the role being installed and the target host + credentials.",
+        "required": [
+          "role",
+          "host",
+          "credentialVaultId",
+          "usernameSecretId",
+          "passwordSecretId"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "credentialVaultId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "usernameSecretId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passwordSecretId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "ServiceInstanceList": {
+        "title": "ServiceInstanceList",
+        "description": "Standalone installation targets. Must be null when `host` is provided (hosted blueprint).",
+        "oneOf": [
+          {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceInstance"
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "StationServiceRecord": {
+        "title": "StationServiceRecord",
+        "type": "object",
+        "description": "Flattened service projection across stations.",
+        "required": [
+          "id",
+          "stationId",
+          "name",
+          "blueprint",
+          "status",
+          "failureReason",
+          "instances",
+          "host",
+          "installations",
+          "lastInstalledAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "blueprint": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "failureReason": {
+            "title": "StationServiceFailureReason",
+            "description": "Why the last install FAILED; null outside FAILED. Survives restarts.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "instances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StationServiceInstanceRecord"
+            }
+          },
+          "host": {
+            "$ref": "#/components/schemas/StationServiceHostRecord"
+          },
+          "installations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StationServiceInstallationRecord"
+            }
+          },
+          "lastInstalledAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StationServiceInstanceRecord": {
+        "title": "StationServiceInstanceRecord",
+        "type": "object",
+        "required": [
+          "role",
+          "host",
+          "name",
+          "provider",
+          "cluster",
+          "node"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "cluster": {
+            "type": "string"
+          },
+          "node": {
+            "type": "string"
+          }
+        }
+      },
+      "StationServiceHostRecord": {
+        "title": "StationServiceHostRecord",
+        "description": "Resolved host reference. Null for standalone services.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "serviceId",
+              "serviceName",
+              "serviceBlueprint",
+              "role"
+            ],
+            "properties": {
+              "serviceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "serviceName": {
+                "type": "string"
+              },
+              "serviceBlueprint": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "StationServiceInstallationRecord": {
+        "title": "StationServiceInstallationRecord",
+        "type": "object",
+        "required": [
+          "role",
+          "host",
+          "blueprintVersion",
+          "outputs",
+          "at"
+        ],
+        "properties": {
+          "role": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "blueprintVersion": {
+            "type": "string"
+          },
+          "outputs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "at": {
+            "type": "string"
+          }
+        }
+      },
+      "StationInstanceRecord": {
+        "title": "StationInstanceRecord",
+        "type": "object",
+        "description": "Cross-provider VM annotated with occupancy info from the Service domain.",
+        "required": [
+          "id",
+          "name",
+          "host",
+          "os",
+          "provider",
+          "cluster",
+          "node",
+          "specs",
+          "credentialVaultId",
+          "usernameSecretId",
+          "passwordSecretId",
+          "busy",
+          "busyBy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "host": {
+            "type": "string"
+          },
+          "os": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "cluster": {
+            "$ref": "#/components/schemas/StationInstanceClusterRef"
+          },
+          "node": {
+            "$ref": "#/components/schemas/StationInstanceNodeRef"
+          },
+          "specs": {
+            "$ref": "#/components/schemas/StationInstanceSpecs"
+          },
+          "credentialVaultId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "usernameSecretId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "passwordSecretId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "busy": {
+            "type": "boolean"
+          },
+          "busyBy": {
+            "$ref": "#/components/schemas/StationInstanceBusyBy"
+          }
+        }
+      },
+      "StationInstanceClusterRef": {
+        "title": "StationInstanceClusterRef",
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "StationInstanceNodeRef": {
+        "title": "StationInstanceNodeRef",
+        "type": "object",
+        "required": [
+          "id",
+          "name"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "StationInstanceSpecs": {
+        "title": "StationInstanceSpecs",
+        "type": "object",
+        "required": [
+          "cpu",
+          "ram",
+          "disk"
+        ],
+        "properties": {
+          "cpu": {
+            "type": "integer"
+          },
+          "ram": {
+            "type": "integer"
+          },
+          "disk": {
+            "type": "integer"
+          }
+        }
+      },
+      "StationInstanceBusyBy": {
+        "title": "StationInstanceBusyBy",
+        "description": "Occupancy reference. Null when the VM is not occupied by any service.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "serviceId",
+              "serviceName",
+              "role"
+            ],
+            "properties": {
+              "serviceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "serviceName": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "StationRecord": {
+        "title": "StationRecord",
+        "type": "object",
+        "description": "Listing-friendly view of a station: derived status + service count + per-status stats.",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "status",
+          "serviceCount",
+          "serviceStats"
+        ],
+        "properties": {
+          "id": {
+            "title": "StationId",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "title": "StationName",
+            "type": "string"
+          },
+          "description": {
+            "title": "StationDescription",
+            "type": "string"
+          },
+          "status": {
+            "title": "StationStatus",
+            "type": "string"
+          },
+          "serviceCount": {
+            "title": "StationServiceCount",
+            "type": "integer"
+          },
+          "serviceStats": {
+            "$ref": "#/components/schemas/StationServiceStats"
+          }
+        }
+      },
+      "StationServiceStats": {
+        "title": "StationServiceStats",
+        "type": "object",
+        "description": "Per-status counts derived from the station's services.",
+        "required": [
+          "registered",
+          "installing",
+          "installed",
+          "failed",
+          "aborted"
+        ],
+        "properties": {
+          "registered": {
+            "type": "integer"
+          },
+          "installing": {
+            "type": "integer"
+          },
+          "installed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "aborted": {
+            "type": "integer"
+          }
+        }
+      },
+      "ExecutionStarted": {
+        "title": "ExecutionStarted",
+        "type": "object",
+        "description": "Ack of a long-running execution: the server returns the executionId so the UI can attach via execution.watch(executionId).",
+        "required": [
+          "executionId"
+        ],
+        "properties": {
+          "executionId": {
+            "title": "ExecutionId",
+            "type": "string"
+          }
+        }
+      },
+      "ServiceHostRef": {
+        "title": "ServiceHostRef",
+        "description": "Reference to a host service (for hosted blueprints). Must be null when `instances` is provided.",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "serviceId",
+              "role"
+            ],
+            "properties": {
+              "serviceId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "role": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    }
+  }
+}

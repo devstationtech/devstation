@@ -1,0 +1,24 @@
+# Build output
+dist/
+reports/
+coverage/
+.build-cache/
+.build-staging/
+.stryker-tmp/
+
+# Dependencies
+node_modules/
+
+# Local environment & runtime config (never commit)
+.env
+.env.local
+.mcp.json
+.mcp.local.json
+
+# Agent tooling local state
+.claude/
+
+# Scratch
+tasks.txt
+Revisões gerais.txt
+*.local.txt

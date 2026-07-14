@@ -1,0 +1,30 @@
+{
+  "name": "@devstation/tui-ink",
+  "exports": "./src/commands.ts",
+  "imports": {
+    "@ui/": "./src/",
+    "react": "npm:react@^18.3.1",
+    "react/jsx-runtime": "npm:react@^18.3.1/jsx-runtime",
+    "@types/react": "npm:@types/react@^18.3.28",
+    "ink": "npm:ink@^5.2.1",
+    "chalk": "npm:chalk@^5.6.2",
+    "ink-spinner": "npm:ink-spinner@^5.0.0",
+    "ink-scroll-view": "npm:ink-scroll-view@^0.3.6",
+    "ink-select-input": "npm:ink-select-input@^6.2.0",
+    "ink-task-list": "npm:ink-task-list@^2.0.0",
+    "ink-testing-library": "npm:ink-testing-library@^4.0.0",
+    "@mishieck/ink-titled-box": "npm:@mishieck/ink-titled-box@^0.4.2",
+    "asciichart": "npm:asciichart@^1.5.25",
+    "@std/tar": "jsr:@std/tar@^0.1.10",
+    "@std/path": "jsr:@std/path@^1.1.4"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react"
+  },
+  "tasks": {
+    "dev": "deno run -A bin/devstation",
+    "check": "deno check src/cli/commands.ts",
+    "build": "deno compile -A --output ../../dist/devstation bin/devstation"
+  }
+}

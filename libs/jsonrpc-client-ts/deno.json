@@ -1,0 +1,4 @@
+{
+  "name": "@devstation/jsonrpc-client-ts",
+  "exports": "./src/mod.ts"
+}

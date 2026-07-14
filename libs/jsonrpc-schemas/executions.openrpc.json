@@ -1,0 +1,161 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core — Executions",
+    "version": "1.0.0",
+    "description": "Long-running executions infrastructure. Follows Google AIP-151 conventions: executions are caller-issued units of work with best-effort cancellation and an attachable progress stream. Streaming is delivered via `execution.event` JSON-RPC notifications (no `id`) emitted during an `execution.watch` request — the same channel carries request/response and notifications, demuxed by frame shape (LSP / MCP convention)."
+  },
+  "methods": [
+    {
+      "name": "execution.watch",
+      "description": "Subscribes to an operation's event stream. The server emits `execution.event` notifications for every event produced so far plus future events, until a terminal event closes the stream. The final response on this request id is an empty Ack — the terminal arrived as a notification.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "executionId",
+          "required": true,
+          "schema": { "title": "ExecutionId", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": { "$ref": "#/components/schemas/Ack" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." },
+        { "code": -32001, "message": "Operation not found." }
+      ]
+    },
+    {
+      "name": "execution.cancel",
+      "description": "Best-effort cancellation of a running operation (AIP-151 semantics). The server signals cancellation to the underlying task; the terminal event observed by watchers may be `cancelled`, or `succeeded`/`failed` if the operation completed before the signal landed.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        },
+        {
+          "name": "executionId",
+          "required": true,
+          "schema": { "title": "ExecutionId", "type": "string" }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": { "$ref": "#/components/schemas/Ack" }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    },
+    {
+      "name": "execution.list",
+      "description": "Snapshot of every operation currently tracked. Useful for observability — listing in-flight and recently terminated operations for a monitoring screen.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": { "title": "SessionIdentifier", "type": "string", "format": "uuid" }
+        }
+      ],
+      "result": {
+        "name": "operations",
+        "schema": {
+          "type": "array",
+          "items": { "$ref": "#/components/schemas/ExecutionRecord" }
+        }
+      },
+      "errors": [
+        { "code": -32000, "message": "Unauthenticated." }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ExecutionRecord": {
+        "title": "ExecutionRecord",
+        "type": "object",
+        "description": "Snapshot row in execution.list.",
+        "required": ["id"],
+        "properties": {
+          "id": { "title": "ExecutionId", "type": "string" }
+        }
+      },
+      "ExecutionEvent": {
+        "title": "ExecutionEvent",
+        "description": "Tagged union of events emitted during an operation's lifetime. Discriminated by the `type` field. BCs may extend the union by declaring additional variants in their own schemas that follow the same shape (`type` literal + payload).",
+        "oneOf": [
+          { "$ref": "#/components/schemas/Log" },
+          { "$ref": "#/components/schemas/Step" },
+          { "$ref": "#/components/schemas/Succeeded" },
+          { "$ref": "#/components/schemas/Failed" },
+          { "$ref": "#/components/schemas/Cancelled" }
+        ],
+        "discriminator": { "propertyName": "type" }
+      },
+      "Log": {
+        "title": "Log",
+        "type": "object",
+        "required": ["type", "line"],
+        "properties": {
+          "type": { "enum": ["log"] },
+          "line": { "type": "string" }
+        }
+      },
+      "Step": {
+        "title": "Step",
+        "type": "object",
+        "required": ["type", "name"],
+        "properties": {
+          "type": { "enum": ["step"] },
+          "name": { "type": "string" },
+          "detail": { "type": ["string", "null"] }
+        }
+      },
+      "Succeeded": {
+        "title": "Succeeded",
+        "description": "Terminal — operation completed without error. `result` carries an optional in-process payload (e.g. the installation list a installer task produces for the orchestrator); it is opaque on the wire — UI watchers ignore it and only react to the `succeeded` tag.",
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "enum": ["succeeded"] },
+          "result": {}
+        }
+      },
+      "Failed": {
+        "title": "Failed",
+        "description": "Terminal — operation completed with an error.",
+        "type": "object",
+        "required": ["type", "error"],
+        "properties": {
+          "type": { "enum": ["failed"] },
+          "error": { "type": "string" }
+        }
+      },
+      "Cancelled": {
+        "title": "Cancelled",
+        "description": "Terminal — operation was cancelled by an explicit execution.cancel.",
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": { "enum": ["cancelled"] }
+        }
+      },
+      "ExecutionEventNotification": {
+        "title": "ExecutionEventNotification",
+        "description": "Params shape for the server-initiated `execution.event` notification.",
+        "type": "object",
+        "required": ["executionId", "event"],
+        "properties": {
+          "executionId": { "title": "ExecutionId", "type": "string" },
+          "event": { "$ref": "#/components/schemas/ExecutionEvent" }
+        }
+      }
+    }
+  }
+}

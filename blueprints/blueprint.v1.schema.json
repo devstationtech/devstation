@@ -1,0 +1,356 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json",
+  "title": "DevStation Blueprint",
+  "description": "Declarative recipe for installing and operating a service. Lives at blueprints/<name>/blueprint.yaml.",
+  "type": "object",
+  "required": [
+    "name",
+    "description",
+    "version",
+    "compatibility"
+  ],
+  "additionalProperties": false,
+  "oneOf": [
+    {
+      "required": [
+        "roles"
+      ],
+      "not": {
+        "required": [
+          "host"
+        ]
+      }
+    },
+    {
+      "required": [
+        "host",
+        "install"
+      ],
+      "not": {
+        "required": [
+          "roles"
+        ]
+      }
+    }
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier (kebab-case). Matches the directory name."
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line summary shown in the catalog."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Semantic version of the blueprint (independent from the software it installs)."
+    },
+    "compatibility": {
+      "type": "object",
+      "required": [
+        "os"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "os": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "ubuntu-22-04",
+              "ubuntu-24-04",
+              "debian-12",
+              "debian-13"
+            ]
+          },
+          "description": "VM OS images this blueprint supports. Picker filters incompatible VMs."
+        }
+      }
+    },
+    "placement": {
+      "type": "string",
+      "enum": [
+        "exclusive",
+        "shared"
+      ],
+      "default": "exclusive",
+      "description": "exclusive: at most one service of this blueprint per host. shared: many."
+    },
+    "inputs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/input"
+      }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/role"
+      },
+      "description": "Base form: declares the roles this blueprint runs as. Mutually exclusive with 'host'."
+    },
+    "host": {
+      "type": "object",
+      "required": [
+        "blueprint",
+        "role"
+      ],
+      "additionalProperties": false,
+      "description": "Hosted form: identifies the host blueprint+role this hosted blueprint runs on top of. Mutually exclusive with 'roles'.",
+      "properties": {
+        "blueprint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "role": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "install": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "description": "Top-level install steps that run on each host instance (hosted form only)."
+    },
+    "uninstall": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/step"
+      },
+      "description": "Top-level uninstall steps run on each host instance (hosted form only)."
+    }
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "required": [
+        "name",
+        "label",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "boolean",
+            "secret"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "default": {},
+        "help": {
+          "type": "string"
+        }
+      }
+    },
+    "role": {
+      "type": "object",
+      "required": [
+        "name",
+        "install"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "instances": {
+          "type": "string",
+          "enum": [
+            "one",
+            "many",
+            "zeroOrMore"
+          ],
+          "default": "one"
+        },
+        "install": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/step"
+          }
+        },
+        "uninstall": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "description": "Optional uninstall steps for this role, run in reverse role order."
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "name",
+        "description"
+      ],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "run"
+          ],
+          "not": {
+            "required": [
+              "script"
+            ]
+          }
+        },
+        {
+          "required": [
+            "script"
+          ],
+          "not": {
+            "required": [
+              "run"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run": {
+          "type": "string",
+          "description": "Inline shell command(s). Templating: ${inputs.X}, ${secrets.X}, ${peer.<role>[<i>].host|secrets.X|outputs.X}, ${role}, ${host}, ${file:path}."
+        },
+        "script": {
+          "type": "string",
+          "description": "Path to a sibling .sh file relative to the blueprint dir (e.g. scripts/install.sh)."
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Environment variables exported before running the shell. Values support templating."
+        },
+        "verify": {
+          "$ref": "#/$defs/verify"
+        },
+        "publish": {
+          "$ref": "#/$defs/publish"
+        },
+        "rollback": {
+          "$ref": "#/$defs/rollback"
+        }
+      }
+    },
+    "verify": {
+      "type": "object",
+      "required": [
+        "run"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "run": {
+          "type": "string",
+          "description": "Shell command that exits 0 when the step's effect is in place. Skips the step on healthy."
+        },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "intervalSeconds": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "publish": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "secret": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/publishSource"
+          }
+        },
+        "fact": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/publishSource"
+          }
+        }
+      }
+    },
+    "publishSource": {
+      "type": "string",
+      "pattern": "^(file:.+|stdout-line:.+)$",
+      "description": "Where the value comes from. file:/remote/path = read remote file via cat. stdout-line:PREFIX= = first stdout line starting with PREFIX (value is everything after)."
+    },
+    "rollback": {
+      "type": "object",
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "run"
+          ],
+          "not": {
+            "required": [
+              "script"
+            ]
+          }
+        },
+        {
+          "required": [
+            "script"
+          ],
+          "not": {
+            "required": [
+              "run"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "run": {
+          "type": "string"
+        },
+        "script": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

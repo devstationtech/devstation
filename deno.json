@@ -1,0 +1,67 @@
+{
+  "version": "0.0.1",
+  "nodeModulesDir": "none",
+  "workspace": [
+    "./server",
+    "./tui/ink",
+    "./libs/arch-test-ts",
+    "./libs/jsonrpc-client-ts",
+    "./libs/jsonrpc-contracts-ts",
+    "./libs/mcp-test-harness-ts"
+  ],
+  "imports": {
+    "@arch-test-ts/": "./libs/arch-test-ts/src/",
+    "@jsonrpc-client-ts/": "./libs/jsonrpc-client-ts/src/",
+    "@jsonrpc-contracts-ts/": "./libs/jsonrpc-contracts-ts/src/",
+    "@mcp-test-harness-ts/": "./libs/mcp-test-harness-ts/src/",
+    "@std/assert": "jsr:@std/assert@^1.0.19",
+    "@std/fs": "jsr:@std/fs@^1.0.23",
+    "@std/path": "jsr:@std/path@^1.1.4",
+    "@std/testing": "jsr:@std/testing@^1.0.17",
+    "@cliffy/command": "jsr:@cliffy/command@^1"
+  },
+  "fmt": {
+    "exclude": [
+      ".agents/",
+      "blueprints/",
+      "docs/",
+      "AGENTS.md",
+      "README.md"
+    ],
+    "lineWidth": 100,
+    "indentWidth": 2,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "exclude": [
+      ".agents/",
+      "docs/",
+      "AGENTS.md",
+      "README.md"
+    ],
+    "rules": {
+      "exclude": [
+        "no-explicit-any",
+        "no-empty-interface"
+      ]
+    }
+  },
+  "tasks": {
+    "test": "deno test -A --v8-flags=--max-old-space-size=4096",
+    "test:coverage": "deno test -A --v8-flags=--max-old-space-size=4096 --coverage=reports/coverage && deno coverage reports/coverage --html --include=server/src/",
+    "fmt": "deno fmt",
+    "lint": "deno lint",
+    "contracts:codegen": "deno task --cwd libs/jsonrpc-contracts-ts codegen",
+    "mcp:e2e:management": "deno test -A --unsafely-ignore-certificate-errors --junit-path=reports/mcp/management.junit.xml server/tests/mcp/e2e/management/*.mcptest.ts",
+    "mcp:e2e:infra": "deno test -A --unsafely-ignore-certificate-errors --junit-path=reports/mcp/infra.junit.xml server/tests/mcp/e2e/infra/*.mcptest.ts",
+    "test:mutation": "deno task --cwd server test:mutation",
+    "release:checksums": "deno run -A release/scripts/checksums.ts",
+    "release:manifest": "deno run -A release/scripts/latest-manifest.ts",
+    "release:version": "deno run -A release/scripts/release-version.ts",
+    "build:linux": "deno run -A release/scripts/build-release.ts --target linux-x64",
+    "build:release": "deno run -A release/scripts/build-release.ts",
+    "check": "deno task --cwd server check && deno task --cwd tui/ink check",
+    "build": "deno task --cwd server build && deno task --cwd tui/ink build"
+  }
+}

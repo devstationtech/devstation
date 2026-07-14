@@ -1,0 +1,358 @@
+name: Main
+
+on:
+  # PR-only: pushes to main run the identical quality gate inside
+  # release.yml — running both was duplicate compute, and the two copies
+  # had already drifted (this one's coverage pointed at a path that no
+  # longer exists post workspace-split).
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - ready_for_review
+      - synchronize
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One quality run per ref — a new push supersedes the in-flight PR run.
+concurrency:
+  group: main-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      coverage: ${{ steps.coverage.outputs.percent }}
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+      SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+        with:
+          deno-version: v2.x
+
+      - name: Prepare reports
+        run: mkdir -p reports
+
+      - name: Format
+        id: format
+        run: deno fmt --check
+
+      - name: Lint
+        id: lint
+        run: deno task lint
+
+      - name: Type check
+        id: typecheck
+        run: deno task check
+
+      - name: Test
+        id: test
+        run: deno test -A --v8-flags=--max-old-space-size=4096 --junit-path=reports/junit.xml --coverage=coverage
+
+      - name: Coverage reports
+        id: coverage
+        if: always()
+        run: |
+          if [ -f coverage/lcov.info ]; then
+            cp coverage/lcov.info reports/lcov.info
+          elif [ -d coverage ]; then
+            deno coverage coverage --lcov --output=reports/lcov.info --include=server/src/
+          fi
+          if [ -d coverage/html ]; then
+            cp -R coverage/html reports/coverage-html
+          elif [ -d coverage ]; then
+            deno coverage coverage --html --include=server/src/
+            if [ -d html ]; then mv html reports/coverage-html; fi
+          fi
+          if [ -f reports/lcov.info ]; then
+            coverage_percent="$(awk '
+              /^LF:/ { total += substr($0, 4) }
+              /^LH:/ { covered += substr($0, 4) }
+              END {
+                if (total > 0) {
+                  printf "%.2f%%", (covered / total) * 100
+                } else {
+                  printf "n/a"
+                }
+              }
+            ' reports/lcov.info)"
+          else
+            coverage_percent="n/a"
+          fi
+          echo "Coverage: ${coverage_percent}"
+          echo "percent=${coverage_percent}" >> "$GITHUB_OUTPUT"
+
+      - name: Dependency audit
+        id: audit
+        run: |
+          set -o pipefail
+          deno audit --level=high 2>&1 | tee reports/deno-audit.txt
+
+      - name: Socket supply-chain audit (advisory)
+        id: audit_socket
+        if: always() && vars.ENABLE_SOCKET_AUDIT == 'true'
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          deno audit --socket 2>&1 | tee reports/deno-audit-socket.txt
+
+      - name: Compile Linux binary
+        id: compile
+        run: deno task build:linux -- --version 0.0.0-ci --git-sha "$GITHUB_SHA"
+
+      - name: SonarQube Cloud scan
+        id: sonar_cloud
+        if: env.SONAR_TOKEN != '' && env.SONAR_PROJECT_KEY != '' && env.SONAR_ORGANIZATION != '' && env.SONAR_HOST_URL == ''
+        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.organization=${{ env.SONAR_ORGANIZATION }}
+            -Dsonar.qualitygate.wait=true
+
+      - name: SonarQube Server scan
+        id: sonar_server
+        if: env.SONAR_TOKEN != '' && env.SONAR_PROJECT_KEY != '' && env.SONAR_HOST_URL != ''
+        uses: SonarSource/sonarqube-scan-action@713881670b6b3676cda39549040e2d88c70d582e # v8.2.0
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ env.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=${{ env.SONAR_PROJECT_KEY }}
+            -Dsonar.qualitygate.wait=true
+
+      - name: CI summary
+        if: always()
+        env:
+          FORMAT_RESULT: ${{ steps.format.outcome }}
+          LINT_RESULT: ${{ steps.lint.outcome }}
+          TYPECHECK_RESULT: ${{ steps.typecheck.outcome }}
+          TEST_RESULT: ${{ steps.test.outcome }}
+          COVERAGE_RESULT: ${{ steps.coverage.outcome }}
+          COVERAGE_PERCENT: ${{ steps.coverage.outputs.percent }}
+          AUDIT_RESULT: ${{ steps.audit.outcome }}
+          AUDIT_SOCKET_RESULT: ${{ steps.audit_socket.outcome }}
+          COMPILE_RESULT: ${{ steps.compile.outcome }}
+          SONAR_CLOUD_RESULT: ${{ steps.sonar_cloud.outcome }}
+          SONAR_SERVER_RESULT: ${{ steps.sonar_server.outcome }}
+        run: |
+          mkdir -p reports
+          if [ ! -f reports/deno-audit.txt ]; then
+            echo "Deno audit did not run. Check previous gates in this job." > reports/deno-audit.txt
+          fi
+          if [ ! -f reports/deno-audit-socket.txt ]; then
+            echo "Socket audit skipped. Set repository variable ENABLE_SOCKET_AUDIT=true to enable it." > reports/deno-audit-socket.txt
+          fi
+
+          sonar_result="skipped"
+          if [ "${SONAR_CLOUD_RESULT:-skipped}" != "skipped" ]; then
+            sonar_result="${SONAR_CLOUD_RESULT}"
+          elif [ "${SONAR_SERVER_RESULT:-skipped}" != "skipped" ]; then
+            sonar_result="${SONAR_SERVER_RESULT}"
+          fi
+
+          {
+            echo "## DevStation CI"
+            echo
+            echo "| Gate | Result |"
+            echo "|---|---|"
+            echo "| Format | ${FORMAT_RESULT:-skipped} |"
+            echo "| Lint | ${LINT_RESULT:-skipped} |"
+            echo "| Type check | ${TYPECHECK_RESULT:-skipped} |"
+            echo "| Tests | ${TEST_RESULT:-skipped} |"
+            echo "| Coverage report | ${COVERAGE_RESULT:-skipped} |"
+            echo "| Coverage | ${COVERAGE_PERCENT:-n/a} |"
+            echo "| Deno audit | ${AUDIT_RESULT:-skipped} |"
+            echo "| Socket audit | ${AUDIT_SOCKET_RESULT:-skipped} (advisory) |"
+            echo "| Compile Linux binary | ${COMPILE_RESULT:-skipped} |"
+            echo "| SonarQube | ${sonar_result} |"
+            echo
+            echo "Artifacts generated by this run:"
+            echo
+            echo "- Test report: \`reports/junit.xml\`"
+            echo "- Coverage: \`reports/lcov.info\` and \`reports/coverage-html/\`"
+            echo "- Audit: \`reports/deno-audit.txt\` and \`reports/deno-audit-socket.txt\`"
+          } | tee reports/ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: test-report
+          path: reports/junit.xml
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage-report
+          path: |
+            coverage/
+            reports/lcov.info
+            reports/coverage-html/
+          if-no-files-found: warn
+
+      - name: Upload audit reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit-reports
+          path: |
+            reports/ci-summary.md
+            reports/deno-audit.txt
+            reports/deno-audit-socket.txt
+          if-no-files-found: warn
+
+  notify-pr-opened:
+    name: Notify PR Opened
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      PR_ACTION: ${{ github.event.action }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+    steps:
+      - name: Send Discord webhook
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not configured; skipping notification."
+            exit 0
+          fi
+
+          case "$PR_ACTION" in
+            opened)
+              title="DevStation - CLI PR opened"
+              ;;
+            reopened)
+              title="DevStation - CLI PR reopened"
+              ;;
+            ready_for_review)
+              title="DevStation - CLI PR ready for review"
+              ;;
+            *)
+              echo "Pull request action is ${PR_ACTION}; opened notification is not needed."
+              exit 0
+              ;;
+          esac
+
+          payload="$(jq -n \
+            --arg title "$title" \
+            --arg description "#${PR_NUMBER} ${PR_TITLE}" \
+            --arg author "$PR_AUTHOR" \
+            --arg source "$PR_HEAD_REF" \
+            --arg target "$PR_BASE_REF" \
+            --arg pr_url "$PR_URL" \
+            '{
+              embeds: [
+                {
+                  title: $title,
+                  description: $description,
+                  color: 3447003,
+                  fields: [
+                    { name: "Author", value: $author, inline: true },
+                    { name: "Source", value: $source, inline: true },
+                    { name: "Target", value: $target, inline: true },
+                    { name: "Pull request", value: $pr_url, inline: false }
+                  ]
+                }
+              ]
+            }')"
+
+          curl -fsS \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK_URL"
+
+  notify-pr-quality:
+    name: Notify PR Quality
+    needs: quality
+    if: always() && github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      QUALITY_RESULT: ${{ needs.quality.result }}
+      COVERAGE_PERCENT: ${{ needs.quality.outputs.coverage }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_TITLE: ${{ github.event.pull_request.title }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+    steps:
+      - name: Send Discord webhook
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL is not configured; skipping notification."
+            exit 0
+          fi
+
+          if [ "$QUALITY_RESULT" = "success" ]; then
+            title="DevStation - CLI PR checks passed"
+            description="#${PR_NUMBER} ${PR_TITLE}"
+            color="3066993"
+          else
+            title="DevStation - CLI PR checks failed"
+            description="#${PR_NUMBER} ${PR_TITLE}"
+            color="15158332"
+          fi
+
+          run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          payload="$(jq -n \
+            --arg title "$title" \
+            --arg description "$description" \
+            --arg author "$PR_AUTHOR" \
+            --arg source "$PR_HEAD_REF" \
+            --arg target "$PR_BASE_REF" \
+            --arg quality "$QUALITY_RESULT" \
+            --arg coverage "${COVERAGE_PERCENT:-n/a}" \
+            --arg pr_url "$PR_URL" \
+            --arg run_url "$run_url" \
+            --arg color "$color" \
+            '{
+              embeds: [
+                {
+                  title: $title,
+                  description: $description,
+                  color: ($color | tonumber),
+                  fields: [
+                    { name: "Author", value: $author, inline: true },
+                    { name: "Source", value: $source, inline: true },
+                    { name: "Target", value: $target, inline: true },
+                    { name: "Quality", value: $quality, inline: true },
+                    { name: "Coverage", value: $coverage, inline: true },
+                    { name: "Pull request", value: $pr_url, inline: false },
+                    { name: "Run", value: $run_url, inline: false }
+                  ]
+                }
+              ]
+            }')"
+
+          curl -fsS \
+            -H "Content-Type: application/json" \
+            -d "$payload" \
+            "$DISCORD_WEBHOOK_URL"

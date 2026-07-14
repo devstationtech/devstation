@@ -1,0 +1,11 @@
+# Keeps the supply chain honest: GitHub Actions are SHA-pinned (see the
+# workflows) and Dependabot proposes the bumps that move those pins.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]

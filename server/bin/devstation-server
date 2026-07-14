@@ -1,0 +1,58 @@
+#!/usr/bin/env -S deno run -A --unsafely-ignore-certificate-errors
+
+/**
+ * Engine binary — serves the DevStation core over stdio. Two protocols,
+ * one binary, selected by the subcommand:
+ *
+ *   devstation-server [rpc serve]   # JSON-RPC over stdio (default)
+ *   devstation-server mcp serve     # MCP over stdio
+ *
+ * Spawned by clients (the Ink TUI, future bubbletea/electron, Claude
+ * Desktop, the e2e harness). The UI binary does NOT bundle these
+ * subcommands — it talks to this binary via subprocess.
+ */
+import { Command } from "@cliffy/command";
+import { bootBanner as rpcBanner, rpc } from "@server/rpc.ts";
+import { bootMcpServer } from "@server/mcp.ts";
+import { serveStdio as serveRpcStdio } from "@server/shared/inbound/rpc/server.ts";
+import { serveStdio as serveMcpStdio } from "@server/shared/inbound/mcp/server.ts";
+
+const serveRpc = () => serveRpcStdio(rpc, rpcBanner);
+const serveMcp = async () => {
+  const { server, banner } = await bootMcpServer();
+  await serveMcpStdio(server, banner);
+};
+
+const command = new Command()
+  .name("devstation-server")
+  .description("DevStation engine — JSON-RPC + MCP over stdio.")
+  // Default = JSON-RPC (back-compat: a bare `devstation-server` still
+  // boots the RPC server, same as before this Cliffy split).
+  .action(serveRpc)
+  .command(
+    "rpc",
+    new Command()
+      .description("JSON-RPC 2.0 over stdio (default)")
+      .command(
+        "serve",
+        new Command()
+          .description("Boot the JSON-RPC stdio server.")
+          .action(serveRpc),
+      ),
+  )
+  .command(
+    "mcp",
+    new Command()
+      .description("Model Context Protocol over stdio")
+      .command(
+        "serve",
+        new Command()
+          .description(
+            "Boot the MCP stdio server. Designed to be spawned by an MCP " +
+              "client (Claude Desktop, Cursor, the @mcp-test-harness).",
+          )
+          .action(serveMcp),
+      ),
+  );
+
+await command.parse(Deno.args);

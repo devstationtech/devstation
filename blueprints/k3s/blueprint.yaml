@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json
+name: k3s
+description: K3s lightweight Kubernetes cluster (server + agents)
+version: 1.0.0
+compatibility:
+  os: [ubuntu-22-04, ubuntu-24-04, debian-12]
+
+roles:
+  - name: server
+    instances: one
+    install:
+      - name: install
+        description: Install K3s server binary and start service
+        run: |
+          curl -sfL https://get.k3s.io | sudo sh -
+        verify:
+          run: systemctl is-active k3s
+          retry:
+            count: 30
+            intervalSeconds: 3
+
+      - name: publish-token
+        description: Save cluster token so agents can join
+        run: |
+          sudo test -r /var/lib/rancher/k3s/server/node-token
+        publish:
+          secret:
+            k3sToken: "file:/var/lib/rancher/k3s/server/node-token"
+
+    uninstall:
+      - name: uninstall-server
+        description: Run the K3s server uninstall script to remove all server components
+        run: |
+          if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
+            sudo /usr/local/bin/k3s-uninstall.sh
+          fi
+        verify:
+          run: "! systemctl is-active k3s >/dev/null 2>&1"
+
+  - name: agent
+    instances: zeroOrMore
+    install:
+      - name: install
+        description: Install K3s agent and join the server
+        env:
+          K3S_URL: "https://${peer.server.host}:6443"
+          K3S_TOKEN: "${peer.server.secrets.k3sToken}"
+        run: |
+          curl -sfL https://get.k3s.io | sudo -E sh -
+        verify:
+          run: systemctl is-active k3s-agent
+          retry:
+            count: 30
+            intervalSeconds: 3
+
+    uninstall:
+      - name: uninstall-agent
+        description: Run the K3s agent uninstall script to remove all agent components
+        run: |
+          if [ -f /usr/local/bin/k3s-agent-uninstall.sh ]; then
+            sudo /usr/local/bin/k3s-agent-uninstall.sh
+          fi
+        verify:
+          run: "! systemctl is-active k3s-agent >/dev/null 2>&1"

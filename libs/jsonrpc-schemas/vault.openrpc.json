@@ -1,0 +1,529 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core \u2014 Vault",
+    "version": "1.0.0",
+    "description": "Encrypted secret storage. Each vault holds named secrets encrypted at rest with the authenticated session's key."
+  },
+  "methods": [
+    {
+      "name": "vault.create",
+      "description": "Creates a new vault.",
+      "params": [
+        {
+          "name": "sessionId",
+          "description": "Authenticated session id.",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "VaultName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "description": "Logged-in user creating the vault.",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "description": "Host where the vault was created.",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated \u2014 sessionId invalid or expired."
+        }
+      ]
+    },
+    {
+      "name": "vault.delete",
+      "description": "Deletes a vault and all its secrets.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.list",
+      "description": "Lists every vault visible to the caller.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "vaults",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VaultRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.secrets.generate",
+      "description": "Generates (or stores) a secret in the given vault. Encrypts with the session key.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "SecretName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        },
+        {
+          "name": "value",
+          "description": "Plaintext value. If absent, the server generates a random secret.",
+          "required": false,
+          "schema": {
+            "title": "SecretPlaintext",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "description",
+          "required": false,
+          "schema": {
+            "title": "SecretDescription",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.secrets.retrieve",
+      "description": "Decrypts and returns the secret value, or null when the secret/vault is unknown.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "secretId",
+          "required": true,
+          "schema": {
+            "title": "SecretId",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "secret",
+        "schema": {
+          "$ref": "#/components/schemas/SecretValue"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.secrets.delete",
+      "description": "Deletes a secret from the vault.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "secretId",
+          "required": true,
+          "schema": {
+            "title": "SecretId",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.rename",
+      "description": "Renames a vault in place (id preserved).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.secrets.rename",
+      "description": "Renames a secret in place (id preserved).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "secretId",
+          "required": true,
+          "schema": {
+            "title": "SecretId",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "Name",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "vault.secrets.list",
+      "description": "Lists the secrets of a vault (metadata only \u2014 values aren't returned).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "secrets",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/SecretRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Ack": {
+        "title": "Ack",
+        "type": "object",
+        "description": "Empty response \u2014 used by methods that don't return a body."
+      },
+      "VaultRecord": {
+        "title": "VaultRecord",
+        "type": "object",
+        "description": "Vault summary for listing.",
+        "required": [
+          "id",
+          "name",
+          "version"
+        ],
+        "properties": {
+          "id": {
+            "title": "VaultId",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "title": "VaultName",
+            "type": "string"
+          },
+          "version": {
+            "title": "VaultVersion",
+            "type": "integer"
+          }
+        }
+      },
+      "SecretRecord": {
+        "title": "SecretRecord",
+        "type": "object",
+        "description": "Secret metadata (no value).",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "createdAt",
+          "createdBy"
+        ],
+        "properties": {
+          "id": {
+            "title": "SecretId",
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "title": "SecretName",
+            "type": "string"
+          },
+          "description": {
+            "title": "SecretDescription",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "createdAt": {
+            "title": "SecretCreatedAt",
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "title": "SecretCreatedBy",
+            "type": "string"
+          }
+        }
+      },
+      "SecretValue": {
+        "title": "SecretValue",
+        "type": "object",
+        "description": "Decrypted secret value. `value` is null when the secret/vault was not found.",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {
+            "title": "SecretPlaintext",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

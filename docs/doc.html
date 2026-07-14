@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Context Map — Commands · Aggregates · Events · Queries · Policies — DevStation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    /* Event Storming (Brandolini): command blue · event orange · aggregate light-yellow · query green · policy purple */
+    --cmd: #6ea3d6;   /* commands  — blue */
+    --evt: #e08b3e;   /* events    — orange */
+    --agg: #e3d28a;   /* aggregates — light yellow */
+    --qry: #5a9e6f;   /* queries   — verde */
+    --pol: #b08fd0;   /* policies  — roxo */
+    --ui:  #d6973f;   /* chrome (botões, destaque de lacuna) — fora da semântica ES */
+    --bg: #08090a; --bg-2: #0e1012; --bg-3: #14171a;
+    --line: #1f2327; --line-2: #2a2f34; --line-3: #3a4046;
+    --fg: #d8dde2; --fg-2: #b0b6bc; --fg-dim: #6c757e; --fg-faint: #444b52;
+    --mono: "JetBrains Mono", "IBM Plex Mono", "SFMono-Regular", Consolas, ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg);
+    font-family: var(--mono); font-size: 13px; line-height: 1.5; font-feature-settings: "calt" 0; overflow: hidden; }
+
+  .topbar { display: flex; align-items: center; gap: 18px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: var(--bg-2); }
+  .brand { font-size: 14px; font-weight: 600; } .brand .dim { color: var(--fg-dim); }
+  .topbar .title { color: var(--fg-2); font-size: 12px; }
+  .topbar .spacer { flex: 1; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .lg { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--fg-2); }
+  .sw { width: 22px; height: 12px; border: 1px solid; display: inline-block; }
+  .sw.cmd { border-color: var(--cmd); background: color-mix(in srgb, var(--cmd) 16%, transparent); }
+  .sw.evt { border-color: var(--evt); background: color-mix(in srgb, var(--evt) 16%, transparent); }
+  .sw.qry { border-color: var(--qry); background: color-mix(in srgb, var(--qry) 16%, transparent); }
+  .sw.agg { border-color: var(--agg); background: color-mix(in srgb, var(--agg) 16%, transparent); }
+  .sw.pol { border-color: var(--pol); background: color-mix(in srgb, var(--pol) 18%, transparent); border-radius: 50%; width: 22px; height: 13px; }
+
+  .controls { position: fixed; left: 16px; bottom: 16px; z-index: 50; display: flex; gap: 8px; align-items: center; }
+  .btn { font-family: var(--mono); font-size: 12px; cursor: pointer; padding: 7px 11px; border: 1px solid var(--line-2); background: var(--bg-2); color: var(--fg-2); transition: all 120ms ease; }
+  .btn:hover { border-color: var(--ui); color: var(--ui); }
+  .btn.on { border-color: var(--ui); color: var(--ui); background: color-mix(in srgb, var(--ui) 10%, transparent); }
+  .zlevel { font-size: 11px; color: var(--fg-dim); min-width: 42px; text-align: center; }
+  .help { position: fixed; right: 16px; bottom: 16px; z-index: 50; color: var(--fg-faint); font-size: 11px; text-align: right; line-height: 1.6; }
+
+  #viewport { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; cursor: grab;
+    background-color: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 1.6px);
+    background-size: 32px 32px; }
+  #world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+  /* camada de GPU só durante o gesto: evita trilhas ao mover e re-rasteriza nítido ao parar */
+  #world.moving { will-change: transform; }
+  #links { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; z-index: 1; }
+
+  /* unit = context */
+  .unit { position: absolute; z-index: 2; }
+  .unit-title { margin: 0 0 12px 0; display: flex; align-items: baseline; gap: 10px; }
+  .ut-ctx { font-size: 16px; font-weight: 600; color: var(--fg); }
+  .ut-counts { font-size: 11px; color: var(--fg-dim); }
+  .ut-counts .c-cmd { color: var(--cmd); } .ut-counts .c-evt { color: var(--evt); }
+  .ut-counts .c-qry { color: var(--qry); } .ut-counts .c-pol { color: var(--pol); }
+
+  /* row grid: command | aggregate | events, aligned on the same row */
+  .unit-body { display: grid; grid-template-columns: auto 66px auto; align-items: center; column-gap: 24px; row-gap: 5px; }
+
+  .col-title { font-size: 9.5px; text-transform: uppercase; letter-spacing: 1px; }
+  .ct-cmd { color: var(--cmd); justify-self: end; }
+  .ct-evt { color: var(--evt); justify-self: start; }
+  .ct-qry { color: var(--qry); justify-self: end; margin-top: 10px; }
+  .group-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--fg-faint); justify-self: end; margin-top: 6px; }
+
+  .box { position: relative; display: block; padding: 5px 10px; border: 1px solid; font-size: 11.5px; white-space: nowrap; }
+  .box-cmd { border-color: var(--cmd); color: var(--cmd); background: color-mix(in srgb, var(--cmd) 8%, transparent); text-align: right; justify-self: stretch; }
+  .box-cmd.emits::after { content: "▸"; position: absolute; right: -17px; top: 50%; transform: translateY(-50%); color: var(--evt); font-size: 10px; }
+  .box-cmd.fed::before { content: "○"; position: absolute; left: -16px; top: 50%; transform: translateY(-50%); color: var(--pol); font-size: 10px; }
+  .evtwrap { justify-self: start; display: flex; flex-direction: column; gap: 5px; align-self: center; }
+  .box-evt { border-color: var(--evt); color: var(--evt); background: color-mix(in srgb, var(--evt) 8%, transparent); text-align: left; }
+  .qcell { justify-self: stretch; display: flex; flex-direction: column; gap: 5px; }
+  .box-qry { border-color: var(--qry); color: var(--qry); background: color-mix(in srgb, var(--qry) 8%, transparent); text-align: right; }
+  .none { color: var(--fg-faint); font-size: 11px; font-style: italic; }
+
+  /* aggregate bar (light yellow, vertical, spans all rows) */
+  .u-agg { grid-column: 2; grid-row: 1 / -1; align-self: stretch; display: flex; }
+  .agg-bar { width: 66px; height: 100%; margin: 0 auto; border: 1px solid var(--agg); background: color-mix(in srgb, var(--agg) 7%, transparent);
+    display: flex; align-items: center; justify-content: center; }
+  .agg-name { writing-mode: vertical-rl; transform: rotate(180deg); color: var(--agg); font-size: 15px; font-weight: 600; letter-spacing: 1px; white-space: nowrap; }
+  .unit.passive .agg-bar { border-style: dashed; border-color: var(--fg-dim); }
+  .unit.passive .agg-name { color: var(--fg-dim); }
+
+  /* policy oval (wide + flat; size is set inline from the longest name) */
+  .oval { position: absolute; z-index: 3; border-radius: 50%;
+    border: 1.5px solid var(--pol); background: color-mix(in srgb, var(--pol) 12%, transparent);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 7px 26px; gap: 3px; }
+  .oval .ov-tag { color: var(--fg-faint); font-size: 8.5px; text-transform: uppercase; letter-spacing: 1.5px; }
+  .oval .ov-name { color: var(--pol); font-size: 11.5px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; word-break: break-word; }
+
+  body.gaps .box-cmd.emits { opacity: .22; }
+  body.gaps .box-cmd.silent { border-color: var(--ui); background: color-mix(in srgb, var(--ui) 16%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--ui) 45%, transparent); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <span class="brand">dev<span class="dim">station</span></span>
+    <span class="title">context map · command · aggregate · event · query · policy</span>
+    <span class="spacer"></span>
+    <div class="legend">
+      <span class="lg"><span class="sw cmd"></span>command</span>
+      <span class="lg"><span class="sw agg"></span>aggregate</span>
+      <span class="lg"><span class="sw evt"></span>event</span>
+      <span class="lg"><span class="sw qry"></span>query</span>
+      <span class="lg"><span class="sw pol"></span>policy</span>
+    </div>
+  </div>
+
+  <div id="viewport">
+    <div id="world">
+      <svg id="links" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7.5" markerHeight="7.5" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="#b08fd0" />
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="zoomOut" type="button">−</button>
+    <span class="zlevel" id="zlevel">100%</span>
+    <button class="btn" id="zoomIn" type="button">+</button>
+    <button class="btn" id="fit" type="button">ajustar</button>
+    <button class="btn" id="reset" type="button">100%</button>
+    <button class="btn" id="gapBtn" type="button">⚑ commands without event</button>
+  </div>
+  <div class="help">
+    drag to pan · scroll = zoom at pointer · shift + scroll to pan horizontally<br>
+    ▸ command emits event · ○ command fed by a policy · double arrow = dependency inversion
+  </div>
+
+<script>
+// "!" prefixes failure-branch events (rendered as normal events).
+// policy: { name, on, from } — reacts to the `on` event (from context `from`) and triggers this command.
+const MODULES = [
+  {
+    ctx: "cluster", agg: "ProxmoxCluster", kind: "aggregate",
+    groups: [
+      { label: "lifecycle", cmds: [
+        { n: "RegisterCluster" }, { n: "ConnectCluster" }, { n: "DisconnectCluster" }, { n: "UnregisterCluster" } ] },
+      { label: "nodes", cmds: [
+        { n: "RegisterNode" }, { n: "UpdateNode" }, { n: "UnregisterNode" }, { n: "UnregisterAllNodes" } ] },
+      { label: "provisioning", cmds: [
+        { n: "PlanNodes",    emits: ["NodePlanStarted", "NodePlanSucceeded", "!NodePlanFailed"] },
+        { n: "ApplyNodes",   emits: ["NodeApplyStarted", "NodeApplySucceeded", "!NodeApplyFailed"] },
+        { n: "DestroyNodes", emits: ["NodeDestroyStarted", "NodeDestroySucceeded", "!NodeDestroyFailed"] } ] },
+      { label: "virtual machines", cmds: [
+        { n: "RegisterVirtualMachine" }, { n: "UpdateVirtualMachine" }, { n: "UnregisterVirtualMachine" },
+        { n: "UnregisterAllVirtualMachines" },
+        { n: "RecordVirtualMachineServices", policy: { name: "RecordVirtualMachineServicesWhenServiceInstallSucceeded", on: "ServiceInstallSucceeded", from: "station" } },
+        { n: "ForgetVirtualMachineServices", policy: { name: "ForgetVirtualMachineServicesWhenServiceUninstalled", on: "ServiceUninstalled", from: "station" } } ] },
+      { label: "image (materialization)", cmds: [
+        { n: "CreateImage" } ] },
+      { label: "image assignment", cmds: [
+        { n: "AssignImage", emits: ["ImageAssignedToNode"] },
+        { n: "UnassignImage", emits: ["ImageUnassignedFromNode"] },
+        { n: "UpdateAssignedImage" } ] },
+      { label: "interruptions", cmds: [ { n: "AcknowledgeInterruption" } ] },
+    ],
+    queries: ["ListClusters", "GetCluster", "ListImageAssignments", "ListOperatingSystems", "ListProviders",
+      "ListConnections", "ListNodes", "GetProvisionState", "ListStorageByNode", "TestConnection",
+      "ListVirtualMachines", "ListVirtualMachinesByImage", "GetVirtualMachineMetrics", "ListVirtualMachineTags"],
+  },
+  {
+    ctx: "station", agg: "Station", kind: "aggregate",
+    groups: [
+      { label: "station", cmds: [
+        { n: "RegisterStation", emits: ["StationRegistered"] },
+        { n: "UpdateStation",   emits: ["StationUpdated"] },
+        { n: "UnregisterStation",   emits: ["StationUnregistered"] } ] },
+      { label: "service", cmds: [
+        { n: "RegisterService", emits: ["ServiceRegistered"] },
+        { n: "UnregisterService",   emits: ["ServiceUnregistered"] } ] },
+      { label: "install", cmds: [
+        { n: "InstallStation", emits: ["ServiceInstallStarted", "ServiceInstallSucceeded", "!ServiceInstallFailed", "!ServiceInstallAborted"] } ] },
+      { label: "uninstall", cmds: [
+        { n: "UninstallStation", emits: ["ServiceUninstallStarted", "ServiceUninstalled", "!ServiceUninstallFailed", "!ServiceUninstallAborted"] } ] },
+    ],
+    queries: ["ListStations", "GetStation", "ListServiceInstances", "ListServices",
+      "ListServicesByBlueprint", "GetService", "ListServicesByStation"],
+  },
+  {
+    ctx: "vault", agg: "Vault", kind: "aggregate",
+    groups: [
+      { label: "vault", cmds: [ { n: "CreateVault" }, { n: "DeleteVault" } ] },
+      { label: "secrets", cmds: [
+        { n: "GenerateSecret", policy: { name: "StoreServiceSecretsWhenServiceInstallSucceeded", on: "ServiceInstallSucceeded", from: "station" } },
+        { n: "DeleteSecret", policy: { name: "DeleteServiceSecretsWhenServiceUninstalled", on: "ServiceUninstalled", from: "station" } },
+        { n: "RetrieveSecret" } ] },
+    ],
+    queries: ["ListVaults", "ListSecrets"],
+  },
+  {
+    ctx: "size", agg: "ProxmoxSize", kind: "aggregate",
+    groups: [ { cmds: [ { n: "RegisterSize" }, { n: "UnregisterSize" } ] } ],
+    queries: ["ListSizes"],
+  },
+  {
+    ctx: "images", agg: "Image", kind: "aggregate",
+    groups: [
+      { cmds: [ { n: "RegisterImage" }, { n: "UpdateImage" }, { n: "UnregisterImage" } ] },
+      { label: "usage (projection)", cmds: [
+        { n: "RecordImageUsage", policy: { name: "TrackImageUsageWhenAssignedToNode", on: "ImageAssignedToNode", from: "cluster" } },
+        { n: "ForgetImageUsage", policy: { name: "ForgetImageUsageWhenUnassignedFromNode", on: "ImageUnassignedFromNode", from: "cluster" } } ] },
+    ],
+    queries: ["ListImages"],
+  },
+  {
+    ctx: "blueprint", agg: "Blueprint", kind: "read-only", passive: true,
+    groups: [],
+    queries: ["ListBlueprints", "GetBlueprint"],
+  },
+  {
+    ctx: "auth", agg: "Auth / Session", kind: "stateless", passive: true,
+    groups: [ { cmds: [
+      { n: "Authenticate" }, { n: "Configure" }, { n: "Renew" },
+      { n: "GenerateAccessToken" }, { n: "RevokeAccessToken" } ] } ],
+    queries: ["IsConfigured", "GetLocalResources"],
+  },
+  {
+    ctx: "executions", agg: "Execution", kind: "transversal", passive: true,
+    groups: [ { cmds: [ { n: "AbortExecution" } ] } ],
+    queries: ["ListExecutions", "WatchExecution"],
+  },
+];
+
+function el(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+const slug = (s) => s.replace(/[^a-zA-Z0-9]+/g, "-");
+function gi(node, col, row, just) { node.style.gridColumn = col; node.style.gridRow = String(row); if (just) node.style.justifySelf = just; return node; }
+
+const world = document.getElementById("world");
+const svg = document.getElementById("links");
+const unitEls = {};
+
+function buildUnit(m) {
+  const allCmds = (m.groups || []).flatMap((g) => g.cmds || []);
+  const emitCmds = allCmds.filter((c) => c.emits && c.emits.length);
+  const polCmds = allCmds.filter((c) => c.policy);
+  const evCount = allCmds.reduce((a, c) => a + (c.emits ? c.emits.length : 0), 0);
+
+  const unit = el("div", "unit" + (m.passive ? " passive" : "")); unit.id = "unit-" + m.ctx;
+
+  const title = el("div", "unit-title");
+  title.appendChild(el("span", "ut-ctx", m.ctx));
+  const counts = el("span", "ut-counts");
+  counts.innerHTML =
+    '<span class="c-cmd">' + allCmds.length + " cmd</span> (" + emitCmds.length + " emitem) · " +
+    '<span class="c-evt">' + evCount + " ev</span> · " +
+    '<span class="c-qry">' + (m.queries || []).length + " qry</span>" +
+    (polCmds.length ? ' · <span class="c-pol">' + polCmds.length + " pol</span>" : "");
+  title.appendChild(counts);
+  unit.appendChild(title);
+
+  const body = el("div", "unit-body");
+  let r = 0;
+
+  // títulos
+  r++;
+  if (allCmds.length) body.appendChild(gi(el("div", "col-title ct-cmd", "commands"), 1, r));
+  if (evCount) body.appendChild(gi(el("div", "col-title ct-evt", "events"), 3, r));
+
+  // commands (left) + their matching events (right) on the SAME row
+  for (const g of (m.groups || [])) {
+    if (!g.cmds || !g.cmds.length) continue;
+    if (g.label) { r++; body.appendChild(gi(el("div", "group-label", g.label), 1, r)); }
+    for (const c of g.cmds) {
+      r++;
+      const klass = "box box-cmd " + ((c.emits && c.emits.length) ? "emits" : "silent") + (c.policy ? " fed" : "");
+      const cb = el("div", klass, c.n); cb.id = "cmd-" + m.ctx + "-" + slug(c.n);
+      body.appendChild(gi(cb, 1, r));
+      if (c.emits && c.emits.length) {
+        const wrap = el("div", "evtwrap");
+        for (const ev of c.emits) {
+          const name = ev.startsWith("!") ? ev.slice(1) : ev;
+          const eb = el("div", "box box-evt", name); eb.id = "evt-" + m.ctx + "-" + slug(name);
+          wrap.appendChild(eb);
+        }
+        gi(wrap, 3, r);
+        body.appendChild(wrap);
+      }
+    }
+  }
+
+  if (!allCmds.length) { r++; body.appendChild(gi(el("div", "none", "— no commands"), 1, r)); }
+
+  // queries (esquerda, embaixo)
+  if ((m.queries || []).length) {
+    r++; body.appendChild(gi(el("div", "col-title ct-qry", "queries"), 1, r));
+    r++;
+    const qcell = el("div", "qcell");
+    for (const q of m.queries) qcell.appendChild(el("div", "box box-qry", q));
+    body.appendChild(gi(qcell, 1, r));
+  }
+
+  // aggregate spans the FULL width (commands/queries on the left, events on the right).
+  // grid-row explícito até a última linha — "1 / -1" não atravessa linhas implícitas.
+  const agg = el("div", "u-agg");
+  agg.style.gridColumn = "2";
+  agg.style.gridRow = "1 / " + (r + 1);
+  const bar = el("div", "agg-bar"); bar.appendChild(el("span", "agg-name", m.agg));
+  agg.appendChild(bar); body.appendChild(agg);
+
+  unit.appendChild(body);
+  world.appendChild(unit);
+  unitEls[m.ctx] = unit;
+}
+
+const CONNECTORS = [];
+for (const m of MODULES) for (const g of (m.groups || [])) for (const c of (g.cmds || [])) {
+  if (c.policy) CONNECTORS.push({ fromCtx: c.policy.from, fromEvt: c.policy.on, toCtx: m.ctx, toCmd: c.n, name: c.policy.name });
+}
+
+function worldRect(elm) {
+  const r = elm.getBoundingClientRect(); const w = world.getBoundingClientRect();
+  return { left: r.left - w.left, top: r.top - w.top, right: r.right - w.left, bottom: r.bottom - w.top,
+    cx: (r.left + r.right) / 2 - w.left, cy: (r.top + r.bottom) / 2 - w.top, w: r.width, h: r.height };
+}
+function path(a, b) {
+  const dx = Math.max(50, Math.abs(b.x - a.x) * 0.5) * (b.x >= a.x ? 1 : -1);
+  return `M ${a.x},${a.y} C ${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}`;
+}
+
+let scale = 1, panX = 0, panY = 0;
+function apply() { world.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`; document.getElementById("zlevel").textContent = Math.round(scale * 100) + "%"; }
+
+let moveTimer = null;
+function markMoving() {
+  world.classList.add("moving");
+  if (moveTimer) clearTimeout(moveTimer);
+  moveTimer = setTimeout(() => world.classList.remove("moving"), 220);
+}
+function place(ctx, x, y) { const u = unitEls[ctx]; u.style.left = x + "px"; u.style.top = y + "px"; }
+
+function layout() {
+  scale = 1; panX = 0; panY = 0; apply();
+
+  place("station", 40, 40); place("cluster", 0, 0); place("vault", 0, 0); place("images", 0, 0);
+  const stR = worldRect(unitEls.station);
+  const GAP = OVW + 380; // room for the wide oval + curve breathing room each side
+  const rightX = stR.right + GAP;
+  place("cluster", rightX, 40);
+  const clR = worldRect(unitEls.cluster);
+  const vaultY = clR.bottom + 90;
+  place("vault", rightX, vaultY);
+  const vaR = worldRect(unitEls.vault);
+
+  // `images` is fed by cluster policies (ImageAssignedToNode / ...Unassigned),
+  // so it sits to the RIGHT of cluster — mirroring station↔cluster. The policy
+  // ovals land in the gap between them and their arrows enter each command from
+  // the left, never crossing the Image aggregate bar.
+  place("images", clR.right + GAP, 40);
+
+  let stY = (40 + vaR.bottom) / 2 - stR.h / 2; if (stY < 40) stY = 40;
+  place("station", 40, stY);
+
+  const topRowBottom = Math.max(worldRect(unitEls.station).bottom, vaR.bottom);
+  const y2 = topRowBottom + 150;
+  let x = 40;
+  for (const ctx of ["size", "blueprint", "auth", "executions"]) {
+    place(ctx, x, y2); x += worldRect(unitEls[ctx]).w + 90;
+  }
+
+  let maxR = 0, maxB = 0;
+  for (const ctx in unitEls) { const r = worldRect(unitEls[ctx]); maxR = Math.max(maxR, r.right); maxB = Math.max(maxB, r.bottom); }
+  const W = maxR + 140, H = maxB + 140;
+  world.style.width = W + "px"; world.style.height = H + "px";
+  svg.setAttribute("width", W); svg.setAttribute("height", H); svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+
+  drawConnectors(); fit();
+}
+
+function nearEdge(box, toward) {
+  const l = { x: box.left, y: box.cy }, r = { x: box.right, y: box.cy };
+  return Math.abs(l.x - toward.x) <= Math.abs(r.x - toward.x) ? l : r;
+}
+
+// Oval size: width grows with the longest policy name (which wraps inside);
+// flat (short height). Bumps automatically as longer policy names appear.
+const OV_LONGEST = Math.max(40, ...CONNECTORS.map((c) => c.name.length));
+const OVW = Math.min(600, Math.max(380, Math.round(OV_LONGEST * 7.4)));
+const OVH = 84;
+
+function drawConnectors() {
+  [...svg.querySelectorAll(".conn,.port")].forEach((n) => n.remove());
+  [...world.querySelectorAll(".oval")].forEach((n) => n.remove());
+
+  // Pass 1 — compute anchors + the desired oval position (X = midpoint,
+  // Y = the command's row) for every connector.
+  const placements = [];
+  for (const cn of CONNECTORS) {
+    const srcEl = document.getElementById("evt-" + cn.fromCtx + "-" + slug(cn.fromEvt));
+    const tgtEl = document.getElementById("cmd-" + cn.toCtx + "-" + slug(cn.toCmd));
+    if (!srcEl || !tgtEl) continue;
+    const se = worldRect(srcEl), te = worldRect(tgtEl);
+    const evtAnchor = nearEdge(se, { x: te.cx });
+    const cmdAnchor = nearEdge(te, { x: se.cx });
+    placements.push({
+      cn,
+      evtAnchor,
+      cmdAnchor,
+      ovX: (evtAnchor.x + cmdAnchor.x) / 2,
+      ovY: cmdAnchor.y,
+    });
+  }
+
+  // Resolve vertical overlap among ovals that feed the SAME context — their
+  // commands sit on adjacent rows, so push them apart to a clear gap.
+  const MIN_GAP = OVH + 40;
+  const byCtx = new Map();
+  for (const p of placements) {
+    if (!byCtx.has(p.cn.toCtx)) byCtx.set(p.cn.toCtx, []);
+    byCtx.get(p.cn.toCtx).push(p);
+  }
+  for (const group of byCtx.values()) {
+    group.sort((a, b) => a.ovY - b.ovY);
+    for (let i = 1; i < group.length; i++) {
+      const need = group[i - 1].ovY + MIN_GAP;
+      if (group[i].ovY < need) group[i].ovY = need;
+    }
+  }
+
+  // Pass 2 — draw ovals + the double-arrow lines at the resolved positions.
+  for (const { cn, evtAnchor, cmdAnchor, ovX, ovY } of placements) {
+    const oval = el("div", "oval");
+    oval.style.width = OVW + "px";
+    oval.style.height = OVH + "px";
+    oval.style.left = (ovX - OVW / 2) + "px";
+    oval.style.top = (ovY - OVH / 2) + "px";
+    oval.appendChild(el("div", "ov-tag", "policy"));
+    oval.appendChild(el("div", "ov-name", cn.name));
+    world.appendChild(oval);
+
+    const ovLeft = { x: ovX - OVW / 2, y: ovY }, ovRight = { x: ovX + OVW / 2, y: ovY };
+    const ovNearEvt = evtAnchor.x <= ovX ? ovLeft : ovRight;
+    const ovNearCmd = cmdAnchor.x <= ovX ? ovLeft : ovRight;
+    addPath(ovNearEvt, evtAnchor);
+    addPath(ovNearCmd, cmdAnchor);
+    addPort(evtAnchor);
+    addPort(cmdAnchor);
+  }
+}
+function addPath(a, b) {
+  const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  p.setAttribute("class", "conn"); p.setAttribute("d", path(a, b)); p.setAttribute("fill", "none");
+  p.setAttribute("stroke", "#b08fd0"); p.setAttribute("stroke-width", "1.6");
+  p.setAttribute("stroke-dasharray", "5 4"); p.setAttribute("opacity", "0.9");
+  p.setAttribute("marker-end", "url(#arrow)");
+  svg.appendChild(p);
+}
+function addPort(pt) {
+  const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+  c.setAttribute("class", "port"); c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("r", "3"); c.setAttribute("fill", "#b08fd0");
+  svg.appendChild(c);
+}
+
+function fit() {
+  const vp = document.getElementById("viewport").getBoundingClientRect();
+  const W = parseFloat(world.style.width), H = parseFloat(world.style.height);
+  const s = Math.min((vp.width - 60) / W, (vp.height - 60) / H, 1);
+  scale = s > 0 ? s : 1; panX = (vp.width - W * scale) / 2; if (panX < 20) panX = 20; panY = 24; apply();
+}
+
+const vp = document.getElementById("viewport");
+vp.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  markMoving();
+  // mouse scroll = zoom at the cursor (Excalidraw-style); shift+scroll = pan
+  if (e.shiftKey) { panX -= e.deltaY; panY -= e.deltaX; apply(); return; }
+  const r = vp.getBoundingClientRect(); const mx = e.clientX - r.left, my = e.clientY - r.top;
+  const ns = Math.min(2.6, Math.max(0.12, scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+  panX = mx - (mx - panX) * (ns / scale); panY = my - (my - panY) * (ns / scale); scale = ns;
+  apply();
+}, { passive: false });
+let drag = false, ox = 0, oy = 0;
+vp.addEventListener("pointerdown", (e) => { drag = true; ox = e.clientX - panX; oy = e.clientY - panY; vp.setPointerCapture(e.pointerId); vp.style.cursor = "grabbing"; });
+vp.addEventListener("pointermove", (e) => { if (!drag) return; markMoving(); panX = e.clientX - ox; panY = e.clientY - oy; apply(); });
+vp.addEventListener("pointerup", () => { drag = false; vp.style.cursor = "grab"; });
+function zoomBy(f) { const r = vp.getBoundingClientRect(), mx = r.width / 2, my = r.height / 2; const ns = Math.min(2.6, Math.max(0.12, scale * f)); panX = mx - (mx - panX) * (ns / scale); panY = my - (my - panY) * (ns / scale); scale = ns; apply(); }
+document.getElementById("zoomIn").onclick = () => zoomBy(1.15);
+document.getElementById("zoomOut").onclick = () => zoomBy(0.87);
+document.getElementById("fit").onclick = fit;
+document.getElementById("reset").onclick = () => { scale = 1; panX = 20; panY = 24; apply(); };
+document.getElementById("gapBtn").onclick = function () { const on = document.body.classList.toggle("gaps"); this.classList.toggle("on", on); };
+
+MODULES.forEach(buildUnit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout); else window.addEventListener("load", layout);
+</script>
+</body>
+</html>

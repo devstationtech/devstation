@@ -1,0 +1,3357 @@
+{
+  "openrpc": "1.2.6",
+  "info": {
+    "title": "DevStation Core \u2014 Cluster",
+    "version": "1.0.0",
+    "description": "Cluster lifecycle, node management, virtual machine inventory, and provider-specific operations (provisioning, image management). Long-running endpoints follow the LSP-style streaming pattern: request stays pending while `execution.event` notifications carry Log/Step progress; final response carries the typed result."
+  },
+  "methods": [
+    {
+      "name": "cluster.subscribe",
+      "description": "Subscribes the client to the cluster's domain event stream. Server emits `cluster.event` notifications for every domain event published on the cluster's bus topic during the lifetime of the request \u2014 the request stays pending until the client cancels. Mirrors `execution.watch`'s LSP-style streaming: the request response is an empty Ack; the meaningful payloads arrive as notifications. The UI uses this to drive per-node progress (NodePlanSucceeded etc.) while keeping the operation stream limited to generic Log/Step/Succeeded/Failed/Cancelled.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.byImage",
+      "description": "Returns every Proxmox VM (across all clusters and nodes) that is currently associated to the given image id.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "imageId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxImageId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "virtualMachines",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/VirtualMachineByImageRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.metrics",
+      "description": "Returns the RRD time-series for a single Proxmox VM (cpu, ram, disk i/o, network) over the chosen timeframe. Returns an empty array when the cluster, connection or node is unavailable \u2014 never throws.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "virtualMachineId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "timeframe",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxMetricsTimeframe",
+            "type": "string",
+            "enum": [
+              "hour",
+              "day",
+              "week",
+              "month",
+              "year"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "metrics",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ProxmoxVirtualMachineMetricPoint"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.provision",
+      "description": "Preview of the provisioning topology for a Proxmox cluster \u2014 nodes, virtual-machines per node, and image associations. Rejects if the cluster id is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "provision",
+        "schema": {
+          "$ref": "#/components/schemas/ProvisionRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.testConnection",
+      "description": "Tries to reach a Proxmox API with the given host and API token. Returns a tagged result: `{ ok: true, nodeCount }` if the integration responded, or `{ ok: false, error }` otherwise. Never throws \u2014 connection failures are reported in the response.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "host",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxApiHost",
+            "type": "string"
+          }
+        },
+        {
+          "name": "token",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxApiToken",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/TestConnectionRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.connection.bootstrapKey",
+      "description": "One-shot SSH bootstrap of a registered node: reads the node's credentials from the vault, connects with password and installs the DevStation public key in the remote's `~/.ssh/authorized_keys` so subsequent automation runs key-based (sshpass-free). The caller passes only the cluster + node ids \u2014 the password never travels through the wire, it's resolved server-side from the vault the node was registered against. Detects Proxmox pmxcfs (read-only FUSE at /etc/pve) and handles the chmod-write-chmod dance. Idempotent \u2014 if the key is already present, returns `alreadyPresent: true` without modifying the file. Always backs up `authorized_keys` (timestamped) before any write. Never touches `id_*` or other files in `~/.ssh/`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "NodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/BootstrapKeyRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.byId",
+      "description": "Returns the summary for a single cluster (without provider-specific topology summary). Rejects if the cluster id is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "cluster",
+        "schema": {
+          "$ref": "#/components/schemas/ClusterRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.list",
+      "description": "Lists every registered cluster with a topology summary (node count, vm count for proxmox).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "clusters",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ClusterRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.providers.list",
+      "description": "Available cluster providers (the kinds of infrastructure backend a cluster can run on). Today: proxmox. Authoritative source for UI provider pickers \u2014 never inferred client-side.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "providers",
+        "schema": {
+          "title": "ClusterProvidersListResponse",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.operatingSystems.list",
+      "description": "Operating systems supported by cluster images. Today: ubuntu-22-04, ubuntu-24-04, debian-12. Authoritative source for UI image-form OS pickers \u2014 never inferred client-side.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "operatingSystems",
+        "schema": {
+          "title": "ClusterOperatingSystemsListResponse",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.tags",
+      "description": "Distinct VM tags in use across every cluster, with usage count, ordered by count desc then tag asc. Reuse surface for the VM form. Never throws.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "result": {
+        "name": "tags",
+        "schema": {
+          "type": "object",
+          "required": [
+            "tags"
+          ],
+          "properties": {
+            "tags": {
+              "title": "ClusterProxmoxVirtualMachineTagsList",
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TagUsageRecord"
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.list",
+      "description": "Lists VMs registered on a Proxmox node, enriched with size/image names and free tags plus optional live resources from the API. Returns `[]` for unknown cluster/node. Never throws.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "virtualMachines",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ProxmoxVirtualMachineRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.storage.byNode",
+      "description": "Returns the live storages of a single Proxmox node. `connected: false, storages: []` when the cluster has no connection, the node is missing, or the API is unreachable \u2014 never throws.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "storages",
+        "schema": {
+          "$ref": "#/components/schemas/StoragesByNodeRecord"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.list",
+      "description": "Lists the nodes of a Proxmox cluster \u2014 static info from the catalog merged with live resource snapshots from the Proxmox API when the cluster is connected. Returns an empty array for an unknown clusterId. Never throws: when the API is unreachable, the static records are returned with `resources.connected=false`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "nodes",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ProxmoxNodeRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.connections.list",
+      "description": "Returns the Proxmox connection bound to the cluster (zero or one entry \u2014 clusters carry at most one connection). Returns an empty array if the cluster has no connection or does not exist.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "connections",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ProxmoxConnectionRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.images.list",
+      "description": "Lists image *assignments* across clusters \u2014 one row per (node, image) template, carrying the snapshot taken at assign time. Optional `clusterId` filter scopes the listing. The central catalog itself is owned by `image.list`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": false,
+          "schema": {
+            "title": "ClusterId",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "images",
+        "schema": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/ClusterImageRecord"
+          }
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.unregisterAll",
+      "description": "Removes every VM size from a node.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.unregister",
+      "description": "Removes a single VM size from a node. Rejects if the VM id is not found on the node.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.update",
+      "description": "Replaces the mutable fields of an existing VM size on a node. Same shape as register except the id identifies an existing VM (not a new one).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "size",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineSize",
+            "type": "string"
+          }
+        },
+        {
+          "name": "image",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineImage",
+            "type": "string"
+          }
+        },
+        {
+          "name": "ip",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineIp",
+            "type": "string"
+          }
+        },
+        {
+          "name": "gateway",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineGateway",
+            "type": "string"
+          }
+        },
+        {
+          "name": "dns",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineDns",
+            "type": "string"
+          }
+        },
+        {
+          "name": "storage",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineStorage",
+            "type": "string"
+          }
+        },
+        {
+          "name": "cpu",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineCpu",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "ram",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineRam",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "disk",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineDisk",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "credentialVaultId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineCredentialVaultId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "usernameSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineUsernameSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "passwordSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachinePasswordSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "tags",
+          "required": false,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineTags",
+            "type": "array",
+            "items": {
+              "title": "ClusterProxmoxVirtualMachineTag",
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.virtualMachine.register",
+      "description": "Adds a virtual-machine size to a node. Requires an assigned image and complete resource/network/credential bundles. Rejects on duplicate virtualMachineId, conflicting IP, or missing image association.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "size",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineSize",
+            "type": "string"
+          }
+        },
+        {
+          "name": "image",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineImage",
+            "type": "string"
+          }
+        },
+        {
+          "name": "ip",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineIp",
+            "type": "string"
+          }
+        },
+        {
+          "name": "gateway",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineGateway",
+            "type": "string"
+          }
+        },
+        {
+          "name": "dns",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineDns",
+            "type": "string"
+          }
+        },
+        {
+          "name": "storage",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineStorage",
+            "type": "string"
+          }
+        },
+        {
+          "name": "cpu",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineCpu",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "ram",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineRam",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "disk",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineDisk",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "credentialVaultId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineCredentialVaultId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "usernameSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineUsernameSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "passwordSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachinePasswordSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "tags",
+          "required": false,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineTags",
+            "type": "array",
+            "items": {
+              "title": "ClusterProxmoxVirtualMachineTag",
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.images.updateAssigned",
+      "description": "Replaces the virtualMachineId/storage of an existing image assignment on a node. Rejects if the node or image is not found.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "imageId",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "virtualMachineId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "storage",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxNodeStorage",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.images.unassign",
+      "description": "Removes a previously-assigned image association from a node. Rejects if the image is still referenced by any VM on the node.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "imageId",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.images.assign",
+      "description": "Assigns an image from the central `images` catalog to a node as a template (operator-chosen virtualMachineId + storage). The caller passes a point-in-time snapshot (name/os/sourceUrl); the node keeps it so the catalog and the assignment have independent lifecycles.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "imageId",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageSnapshotName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "os",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageSnapshotOs",
+            "type": "string"
+          }
+        },
+        {
+          "name": "sourceUrl",
+          "required": true,
+          "schema": {
+            "title": "ClusterImageSnapshotUrl",
+            "type": "string"
+          }
+        },
+        {
+          "name": "virtualMachineId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVirtualMachineId",
+            "type": "integer"
+          }
+        },
+        {
+          "name": "storage",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxNodeStorage",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.unregisterAll",
+      "description": "Removes every node from the cluster. Rejects if the cluster id is missing or if any node still has virtual-machines attached (the aggregate refuses partial clear).",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.unregister",
+      "description": "Removes a Proxmox node from the cluster. Rejects if the cluster or node id is missing, or if the node still has virtual-machines attached.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.acknowledgeInterruption",
+      "description": "Acknowledges an interrupted long-running operation on a node (state is PLAN_STARTED, APPLY_STARTED, or DESTROY_STARTED after a crash/restart). Transitions the node to the corresponding *_FAILED state via the existing fail*() edges so it becomes retry/destroy-able. Rejects if the node is not in a transient state.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.update",
+      "description": "Replaces the mutable fields (name, ip, credential) of a Proxmox node. Images and virtual-machines are preserved. Rejects if the cluster or node id is missing.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "ip",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeIp",
+            "type": "string"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeVaultId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "usernameSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeUsernameSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "passwordSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodePasswordSecretId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.nodes.register",
+      "description": "Registers a new Proxmox node under the given cluster. The node id is generated server-side. Rejects if name or ip collide with an existing node.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "ip",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeIp",
+            "type": "string"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeVaultId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "usernameSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeUsernameSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "passwordSecretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodePasswordSecretId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.disconnect",
+      "description": "Drops the connection (host + credential) from a Proxmox cluster. Rejects if the cluster id is missing or the cluster is not a Proxmox cluster.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.connect",
+      "description": "Sets or replaces the connection (host + credential) for a Proxmox cluster. Rejects if the cluster id is missing or the cluster is not a Proxmox cluster.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "host",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxHost",
+            "type": "string"
+          }
+        },
+        {
+          "name": "vaultId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxVaultId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "secretId",
+          "required": true,
+          "schema": {
+            "title": "ClusterProxmoxSecretId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "cloneStrategy",
+          "required": false,
+          "schema": {
+            "title": "ClusterProxmoxCloneStrategy",
+            "type": "string"
+          }
+        },
+        {
+          "name": "parallelism",
+          "required": false,
+          "schema": {
+            "title": "ClusterProxmoxParallelism",
+            "type": "integer"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.unregister",
+      "description": "Removes a cluster from the catalog. Rejects if the cluster id is not found. Nodes/images/connection attached to the cluster are dropped along with it.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.register",
+      "description": "Registers a new cluster in the catalog. Returns an Ack on success \u2014 the cluster id is generated server-side and surfaced via cluster.list/cluster.byName queries.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "title": "ClusterName",
+            "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": true,
+          "schema": {
+            "title": "ActorUser",
+            "type": "string"
+          }
+        },
+        {
+          "name": "hostname",
+          "required": true,
+          "schema": {
+            "title": "ActorHostname",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.provisioning.plan",
+      "description": "Runs `tofu plan` against the selected nodes of a Proxmox cluster. Returns `executionId` immediately \u2014 UI subscribes via `execution.watch(executionId)` to receive Log/Step/NodePlanSucceeded/Succeeded/Failed/Cancelled events. Cancel via `execution.cancel(executionId)`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeIds",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeIds",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ExecutionStarted"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.provisioning.apply",
+      "description": "Runs `tofu apply` against the selected nodes of a Proxmox cluster. Returns `executionId` immediately \u2014 UI subscribes via `execution.watch(executionId)` to receive Log/Step/NodeApplied/Succeeded/Failed/Cancelled events. Cancel via `execution.cancel(executionId)`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeIds",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeIds",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ExecutionStarted"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.provisioning.destroy",
+      "description": "Runs `tofu destroy` against the selected nodes of a Proxmox cluster. Returns `executionId` immediately \u2014 UI subscribes via `execution.watch(executionId)` to receive Log/Step/NodeDestroySucceeded/Succeeded/Failed/Cancelled events. Cancel via `execution.cancel(executionId)`.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeIds",
+          "required": true,
+          "schema": {
+            "title": "ClusterNodeIds",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "$ref": "#/components/schemas/ExecutionStarted"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        }
+      ]
+    },
+    {
+      "name": "cluster.proxmox.images.create",
+      "description": "Creates a cloud-init image on the target node via SSH. Long-running: emits Step + Log notifications. Returns an empty Ack on success \u2014 the actual image record is persisted in the cluster aggregate.",
+      "params": [
+        {
+          "name": "sessionId",
+          "required": true,
+          "schema": {
+            "title": "SessionIdentifier",
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "clusterId",
+          "required": true,
+          "schema": {
+            "title": "ClusterId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "nodeId",
+          "required": true,
+          "schema": {
+            "title": "NodeId",
+            "type": "string"
+          }
+        },
+        {
+          "name": "imageId",
+          "required": true,
+          "schema": {
+            "title": "ImageId",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "ack",
+        "schema": {
+          "$ref": "#/components/schemas/Ack"
+        }
+      },
+      "errors": [
+        {
+          "code": -32000,
+          "message": "Unauthenticated."
+        },
+        {
+          "code": -32099,
+          "message": "Operation cancelled."
+        }
+      ]
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ClusterCreation": {
+        "title": "ClusterCreation",
+        "type": "object",
+        "description": "Audit info captured when the cluster was first registered.",
+        "required": [
+          "by",
+          "hostname",
+          "at"
+        ],
+        "properties": {
+          "by": {
+            "title": "ClusterCreationBy",
+            "type": "string"
+          },
+          "hostname": {
+            "title": "ClusterCreationHostname",
+            "type": "string"
+          },
+          "at": {
+            "title": "ClusterCreationAt",
+            "type": "string"
+          }
+        }
+      },
+      "ClusterProxmoxSummary": {
+        "title": "ClusterProxmoxSummary",
+        "type": "object",
+        "description": "Provider-specific topology summary for Proxmox clusters.",
+        "required": [
+          "nodeCount",
+          "virtualMachineCount"
+        ],
+        "properties": {
+          "nodeCount": {
+            "title": "ClusterProxmoxNodeCount",
+            "type": "integer"
+          },
+          "virtualMachineCount": {
+            "title": "ClusterProxmoxVirtualMachineCount",
+            "type": "integer"
+          }
+        }
+      },
+      "VirtualMachineByImageRecord": {
+        "title": "VirtualMachineByImageRecord",
+        "type": "object",
+        "description": "VM association row returned by cluster.proxmox.virtualMachine.byImage.",
+        "required": [
+          "clusterId",
+          "clusterName",
+          "nodeId",
+          "nodeName",
+          "virtualMachineId",
+          "virtualMachineName"
+        ],
+        "properties": {
+          "clusterId": {
+            "title": "VirtualMachineByImageClusterId",
+            "type": "string"
+          },
+          "clusterName": {
+            "title": "VirtualMachineByImageClusterName",
+            "type": "string"
+          },
+          "nodeId": {
+            "title": "VirtualMachineByImageNodeId",
+            "type": "string"
+          },
+          "nodeName": {
+            "title": "VirtualMachineByImageNodeName",
+            "type": "string"
+          },
+          "virtualMachineId": {
+            "title": "VirtualMachineByImageVirtualMachineId",
+            "type": "integer"
+          },
+          "virtualMachineName": {
+            "title": "VirtualMachineByImageVirtualMachineName",
+            "type": "string"
+          }
+        }
+      },
+      "ProxmoxVirtualMachineServiceRecord": {
+        "title": "ProxmoxVirtualMachineServiceRecord",
+        "type": "object",
+        "description": "Read-side projection of a service running on a VM (service BC is the source of truth).",
+        "required": [
+          "serviceId",
+          "serviceName",
+          "blueprint",
+          "role",
+          "installedAt"
+        ],
+        "properties": {
+          "serviceId": {
+            "title": "ProxmoxVirtualMachineServiceRecordServiceId",
+            "type": "string"
+          },
+          "serviceName": {
+            "title": "ProxmoxVirtualMachineServiceRecordServiceName",
+            "type": "string"
+          },
+          "blueprint": {
+            "title": "ProxmoxVirtualMachineServiceRecordBlueprint",
+            "type": "string"
+          },
+          "role": {
+            "title": "ProxmoxVirtualMachineServiceRecordRole",
+            "type": "string"
+          },
+          "installedAt": {
+            "title": "ProxmoxVirtualMachineServiceRecordInstalledAt",
+            "type": "string"
+          }
+        }
+      },
+      "ProxmoxVirtualMachineRecord": {
+        "title": "ProxmoxVirtualMachineRecord",
+        "type": "object",
+        "description": "Full VM read model: size/image ids + names, free tags, network, credential refs, resources, and service projection.",
+        "required": [
+          "id",
+          "name",
+          "tags",
+          "sizeId",
+          "sizeName",
+          "image",
+          "imageName",
+          "imageOs",
+          "ip",
+          "gateway",
+          "dns",
+          "storage",
+          "credentialVaultId",
+          "usernameSecretId",
+          "passwordSecretId",
+          "resources",
+          "services"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProxmoxVirtualMachineRecordId",
+            "type": "integer"
+          },
+          "name": {
+            "title": "ProxmoxVirtualMachineRecordName",
+            "type": "string"
+          },
+          "tags": {
+            "title": "ProxmoxVirtualMachineRecordTags",
+            "type": "array",
+            "items": {
+              "title": "ProxmoxVirtualMachineRecordTag",
+              "type": "string"
+            }
+          },
+          "sizeId": {
+            "title": "ProxmoxVirtualMachineRecordSizeId",
+            "type": "string"
+          },
+          "sizeName": {
+            "title": "ProxmoxVirtualMachineRecordSizeName",
+            "type": "string"
+          },
+          "image": {
+            "title": "ProxmoxVirtualMachineRecordImage",
+            "type": "string"
+          },
+          "imageName": {
+            "title": "ProxmoxVirtualMachineRecordImageName",
+            "type": "string"
+          },
+          "imageOs": {
+            "title": "ProxmoxVirtualMachineRecordImageOs",
+            "type": "string"
+          },
+          "ip": {
+            "title": "ProxmoxVirtualMachineRecordIp",
+            "type": "string"
+          },
+          "gateway": {
+            "title": "ProxmoxVirtualMachineRecordGateway",
+            "type": "string"
+          },
+          "dns": {
+            "title": "ProxmoxVirtualMachineRecordDns",
+            "type": "string"
+          },
+          "storage": {
+            "title": "ProxmoxVirtualMachineRecordStorage",
+            "type": "string"
+          },
+          "credentialVaultId": {
+            "title": "ProxmoxVirtualMachineRecordCredentialVaultId",
+            "type": "string"
+          },
+          "usernameSecretId": {
+            "title": "ProxmoxVirtualMachineRecordUsernameSecretId",
+            "type": "string"
+          },
+          "passwordSecretId": {
+            "title": "ProxmoxVirtualMachineRecordPasswordSecretId",
+            "type": "string"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/ProxmoxResources"
+          },
+          "services": {
+            "title": "ProxmoxVirtualMachineRecordServices",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxmoxVirtualMachineServiceRecord"
+            }
+          }
+        }
+      },
+      "ProxmoxStorageRecord": {
+        "title": "ProxmoxStorageRecord",
+        "type": "object",
+        "description": "Live storage entry on a Proxmox node.",
+        "required": [
+          "id",
+          "type",
+          "available",
+          "total"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProxmoxStorageRecordId",
+            "type": "string"
+          },
+          "type": {
+            "title": "ProxmoxStorageRecordType",
+            "type": "string"
+          },
+          "available": {
+            "title": "ProxmoxStorageRecordAvailable",
+            "type": "integer"
+          },
+          "total": {
+            "title": "ProxmoxStorageRecordTotal",
+            "type": "integer"
+          }
+        }
+      },
+      "StoragesByNodeRecord": {
+        "title": "StoragesByNodeRecord",
+        "type": "object",
+        "description": "Storages of a Proxmox node + connectivity flag. `connected: false` means the entire response (including empty storages) is best-effort.",
+        "required": [
+          "connected",
+          "storages"
+        ],
+        "properties": {
+          "connected": {
+            "title": "StoragesByNodeConnected",
+            "type": "boolean"
+          },
+          "storages": {
+            "title": "StoragesByNodeStorages",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProxmoxStorageRecord"
+            }
+          }
+        }
+      },
+      "ProxmoxCredentialRecord": {
+        "title": "ProxmoxCredentialRecord",
+        "type": "object",
+        "description": "Credential reference for a Proxmox node (vault + secret pair).",
+        "required": [
+          "vaultId",
+          "usernameSecretId",
+          "passwordSecretId"
+        ],
+        "properties": {
+          "vaultId": {
+            "title": "ProxmoxCredentialVaultId",
+            "type": "string"
+          },
+          "usernameSecretId": {
+            "title": "ProxmoxCredentialUsernameSecretId",
+            "type": "string"
+          },
+          "passwordSecretId": {
+            "title": "ProxmoxCredentialPasswordSecretId",
+            "type": "string"
+          }
+        }
+      },
+      "ProxmoxLocalResources": {
+        "title": "ProxmoxLocalResources",
+        "type": "object",
+        "description": "Per-node sum of resources reserved by registered VMs (independent of live API).",
+        "required": [
+          "cpu",
+          "ram",
+          "disk"
+        ],
+        "properties": {
+          "cpu": {
+            "title": "ProxmoxLocalResourcesCpu",
+            "type": "integer"
+          },
+          "ram": {
+            "title": "ProxmoxLocalResourcesRam",
+            "type": "integer"
+          },
+          "disk": {
+            "title": "ProxmoxLocalResourcesDisk",
+            "type": "integer"
+          }
+        }
+      },
+      "ProxmoxLiveResources": {
+        "title": "ProxmoxLiveResources",
+        "type": "object",
+        "description": "Live snapshot of node resources fetched from the Proxmox API.",
+        "required": [
+          "status",
+          "cpuCores",
+          "cpuPercent",
+          "ramUsedGiB",
+          "ramTotalGiB",
+          "diskUsedGiB",
+          "diskTotalGiB",
+          "uptimeSeconds"
+        ],
+        "properties": {
+          "status": {
+            "title": "ProxmoxLiveResourcesStatus",
+            "type": "string"
+          },
+          "cpuCores": {
+            "title": "ProxmoxLiveResourcesCpuCores",
+            "type": "integer"
+          },
+          "cpuPercent": {
+            "title": "ProxmoxLiveResourcesCpuPercent",
+            "type": "number"
+          },
+          "ramUsedGiB": {
+            "title": "ProxmoxLiveResourcesRamUsedGiB",
+            "type": "number"
+          },
+          "ramTotalGiB": {
+            "title": "ProxmoxLiveResourcesRamTotalGiB",
+            "type": "number"
+          },
+          "diskUsedGiB": {
+            "title": "ProxmoxLiveResourcesDiskUsedGiB",
+            "type": "number"
+          },
+          "diskTotalGiB": {
+            "title": "ProxmoxLiveResourcesDiskTotalGiB",
+            "type": "number"
+          },
+          "uptimeSeconds": {
+            "title": "ProxmoxLiveResourcesUptimeSeconds",
+            "type": "integer"
+          }
+        }
+      },
+      "ProxmoxResources": {
+        "title": "ProxmoxResources",
+        "type": "object",
+        "description": "Resource summary for a Proxmox node \u2014 `live` is present when the cluster API is reachable.",
+        "required": [
+          "connected",
+          "local"
+        ],
+        "properties": {
+          "connected": {
+            "title": "ProxmoxResourcesConnected",
+            "type": "boolean"
+          },
+          "local": {
+            "$ref": "#/components/schemas/ProxmoxLocalResources"
+          },
+          "live": {
+            "$ref": "#/components/schemas/ProxmoxLiveResources"
+          }
+        }
+      },
+      "ProxmoxNodeRecord": {
+        "title": "ProxmoxNodeRecord",
+        "type": "object",
+        "description": "Node row \u2014 static catalog info + optional live resources from the Proxmox API.",
+        "required": [
+          "id",
+          "name",
+          "ip",
+          "credential",
+          "virtualMachineCount",
+          "resources",
+          "state",
+          "interrupted"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProxmoxNodeRecordId",
+            "type": "string"
+          },
+          "name": {
+            "title": "ProxmoxNodeRecordName",
+            "type": "string"
+          },
+          "ip": {
+            "title": "ProxmoxNodeRecordIp",
+            "type": "string"
+          },
+          "credential": {
+            "$ref": "#/components/schemas/ProxmoxCredentialRecord"
+          },
+          "virtualMachineCount": {
+            "title": "ProxmoxNodeRecordVirtualMachineCount",
+            "type": "integer"
+          },
+          "resources": {
+            "$ref": "#/components/schemas/ProxmoxResources"
+          },
+          "state": {
+            "title": "ProxmoxNodeRecordState",
+            "type": "string",
+            "description": "Node FSM lifecycle state (REGISTERED, PLAN_*, APPLY_STARTED, APPLY_SUCCEEDED, DESTROY_STARTED, \u2026). The UI gates VM mutations while the node is in-flight."
+          },
+          "interrupted": {
+            "title": "ProxmoxNodeRecordInterrupted",
+            "type": "boolean",
+            "description": "True when the node sits in a transient state (PLAN_STARTED / APPLY_STARTED / DESTROY_STARTED) with no live execution driving it \u2014 implies the last long-running operation was interrupted (e.g., process crash). The UI surfaces this so the operator can acknowledge via cluster.proxmox.nodes.acknowledgeInterruption and unwedge the node."
+          }
+        }
+      },
+      "ProxmoxConnectionRecord": {
+        "title": "ProxmoxConnectionRecord",
+        "type": "object",
+        "description": "Proxmox connection \u2014 host + vault credential reference + provisioning policy.",
+        "required": [
+          "host",
+          "vaultId",
+          "secretId",
+          "cloneStrategy",
+          "parallelism"
+        ],
+        "properties": {
+          "host": {
+            "title": "ProxmoxConnectionRecordHost",
+            "type": "string"
+          },
+          "vaultId": {
+            "title": "ProxmoxConnectionRecordVaultId",
+            "type": "string"
+          },
+          "secretId": {
+            "title": "ProxmoxConnectionRecordSecretId",
+            "type": "string"
+          },
+          "cloneStrategy": {
+            "title": "ProxmoxConnectionRecordCloneStrategy",
+            "type": "string"
+          },
+          "parallelism": {
+            "title": "ProxmoxConnectionRecordParallelism",
+            "type": "integer"
+          }
+        }
+      },
+      "ClusterImageRecord": {
+        "title": "ClusterImageRecord",
+        "type": "object",
+        "description": "One image assignment on a node \u2014 the catalog snapshot (name/os/sourceUrl) plus the materialization (virtualMachineId + storage).",
+        "required": [
+          "imageId",
+          "name",
+          "os",
+          "sourceUrl",
+          "clusterId",
+          "clusterName",
+          "nodeId",
+          "nodeName",
+          "virtualMachineId",
+          "storage"
+        ],
+        "properties": {
+          "imageId": {
+            "title": "ClusterImageRecordImageId",
+            "type": "string"
+          },
+          "name": {
+            "title": "ClusterImageRecordName",
+            "type": "string"
+          },
+          "os": {
+            "title": "ClusterImageRecordOs",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "ClusterImageRecordSourceUrl",
+            "type": "string"
+          },
+          "clusterId": {
+            "title": "ClusterImageRecordClusterId",
+            "type": "string"
+          },
+          "clusterName": {
+            "title": "ClusterImageRecordClusterName",
+            "type": "string"
+          },
+          "nodeId": {
+            "title": "ClusterImageRecordNodeId",
+            "type": "string"
+          },
+          "nodeName": {
+            "title": "ClusterImageRecordNodeName",
+            "type": "string"
+          },
+          "virtualMachineId": {
+            "title": "ClusterImageRecordVirtualMachineId",
+            "type": "integer"
+          },
+          "storage": {
+            "title": "ClusterImageRecordStorage",
+            "type": "string"
+          }
+        }
+      },
+      "ProxmoxVirtualMachineMetricPoint": {
+        "title": "ProxmoxVirtualMachineMetricPoint",
+        "type": "object",
+        "description": "Time-series point for a Proxmox VM \u2014 normalized from an RRD sample.",
+        "required": [
+          "time",
+          "cpuPercent",
+          "ramUsedGiB",
+          "ramTotalGiB",
+          "diskReadMBs",
+          "diskWriteMBs",
+          "netInMBs",
+          "netOutMBs"
+        ],
+        "properties": {
+          "time": {
+            "title": "ProxmoxVirtualMachineMetricTime",
+            "type": "integer"
+          },
+          "cpuPercent": {
+            "title": "ProxmoxVirtualMachineMetricCpuPercent",
+            "type": "number"
+          },
+          "ramUsedGiB": {
+            "title": "ProxmoxVirtualMachineMetricRamUsedGiB",
+            "type": "number"
+          },
+          "ramTotalGiB": {
+            "title": "ProxmoxVirtualMachineMetricRamTotalGiB",
+            "type": "number"
+          },
+          "diskReadMBs": {
+            "title": "ProxmoxVirtualMachineMetricDiskReadMBs",
+            "type": "number"
+          },
+          "diskWriteMBs": {
+            "title": "ProxmoxVirtualMachineMetricDiskWriteMBs",
+            "type": "number"
+          },
+          "netInMBs": {
+            "title": "ProxmoxVirtualMachineMetricNetInMBs",
+            "type": "number"
+          },
+          "netOutMBs": {
+            "title": "ProxmoxVirtualMachineMetricNetOutMBs",
+            "type": "number"
+          }
+        }
+      },
+      "ProvisionVirtualMachineRecord": {
+        "title": "ProvisionVirtualMachineRecord",
+        "type": "object",
+        "description": "Virtual-machine row shown in the provisioning preview.",
+        "required": [
+          "id",
+          "name",
+          "tags",
+          "image",
+          "imageName",
+          "ip",
+          "gateway",
+          "dns",
+          "storage",
+          "cpu",
+          "ram",
+          "disk"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProvisionVirtualMachineId",
+            "type": "integer"
+          },
+          "name": {
+            "title": "ProvisionVirtualMachineName",
+            "type": "string"
+          },
+          "tags": {
+            "title": "ProvisionVirtualMachineTags",
+            "type": "array",
+            "items": {
+              "title": "ProvisionVirtualMachineTag",
+              "type": "string"
+            }
+          },
+          "image": {
+            "title": "ProvisionVirtualMachineImage",
+            "type": "string"
+          },
+          "imageName": {
+            "title": "ProvisionVirtualMachineImageName",
+            "type": "string"
+          },
+          "ip": {
+            "title": "ProvisionVirtualMachineIp",
+            "type": "string"
+          },
+          "gateway": {
+            "title": "ProvisionVirtualMachineGateway",
+            "type": "string"
+          },
+          "dns": {
+            "title": "ProvisionVirtualMachineDns",
+            "type": "string"
+          },
+          "storage": {
+            "title": "ProvisionVirtualMachineStorage",
+            "type": "string"
+          },
+          "cpu": {
+            "title": "ProvisionVirtualMachineCpu",
+            "type": "integer"
+          },
+          "ram": {
+            "title": "ProvisionVirtualMachineRam",
+            "type": "integer"
+          },
+          "disk": {
+            "title": "ProvisionVirtualMachineDisk",
+            "type": "integer"
+          }
+        }
+      },
+      "ProvisionNodeRecord": {
+        "title": "ProvisionNodeRecord",
+        "type": "object",
+        "description": "Node row in the provisioning preview, carrying its VMs directly.",
+        "required": [
+          "id",
+          "name",
+          "ip",
+          "hasCredential",
+          "virtualMachines"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProvisionNodeId",
+            "type": "string"
+          },
+          "name": {
+            "title": "ProvisionNodeName",
+            "type": "string"
+          },
+          "ip": {
+            "title": "ProvisionNodeIp",
+            "type": "string"
+          },
+          "hasCredential": {
+            "title": "ProvisionNodeHasCredential",
+            "type": "boolean"
+          },
+          "virtualMachines": {
+            "title": "ProvisionNodeVirtualMachines",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvisionVirtualMachineRecord"
+            }
+          }
+        }
+      },
+      "TagUsageRecord": {
+        "title": "TagUsageRecord",
+        "type": "object",
+        "description": "One distinct VM tag and how many VMs (across all clusters) use it.",
+        "required": [
+          "tag",
+          "count"
+        ],
+        "properties": {
+          "tag": {
+            "title": "TagUsageTag",
+            "type": "string"
+          },
+          "count": {
+            "title": "TagUsageCount",
+            "type": "integer"
+          }
+        }
+      },
+      "ProvisionImageRecord": {
+        "title": "ProvisionImageRecord",
+        "type": "object",
+        "description": "Image-association row in the provisioning preview.",
+        "required": [
+          "id",
+          "name",
+          "virtualMachineId",
+          "nodeId",
+          "nodeName"
+        ],
+        "properties": {
+          "id": {
+            "title": "ProvisionImageId",
+            "type": "string"
+          },
+          "name": {
+            "title": "ProvisionImageName",
+            "type": "string"
+          },
+          "virtualMachineId": {
+            "title": "ProvisionImageVirtualMachineId",
+            "type": "integer"
+          },
+          "nodeId": {
+            "title": "ProvisionImageNodeId",
+            "type": "string"
+          },
+          "nodeName": {
+            "title": "ProvisionImageNodeName",
+            "type": "string"
+          }
+        }
+      },
+      "ProvisionRecord": {
+        "title": "ProvisionRecord",
+        "type": "object",
+        "description": "Provisioning preview for a Proxmox cluster.",
+        "required": [
+          "clusterId",
+          "clusterName",
+          "connected",
+          "nodes",
+          "images"
+        ],
+        "properties": {
+          "clusterId": {
+            "title": "ProvisionClusterId",
+            "type": "string"
+          },
+          "clusterName": {
+            "title": "ProvisionClusterName",
+            "type": "string"
+          },
+          "connected": {
+            "title": "ProvisionConnected",
+            "type": "boolean"
+          },
+          "nodes": {
+            "title": "ProvisionNodes",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvisionNodeRecord"
+            }
+          },
+          "images": {
+            "title": "ProvisionImages",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvisionImageRecord"
+            }
+          }
+        }
+      },
+      "TestConnectionRecord": {
+        "title": "TestConnectionRecord",
+        "description": "Tagged result of cluster.proxmox.testConnection \u2014 discriminated by `ok`.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/TestConnectionOk"
+          },
+          {
+            "$ref": "#/components/schemas/TestConnectionFailed"
+          }
+        ]
+      },
+      "TestConnectionOk": {
+        "title": "TestConnectionOk",
+        "type": "object",
+        "required": [
+          "ok",
+          "nodeCount"
+        ],
+        "properties": {
+          "ok": {
+            "title": "TestConnectionOkFlag",
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "nodeCount": {
+            "title": "TestConnectionNodeCount",
+            "type": "integer"
+          }
+        }
+      },
+      "TestConnectionFailed": {
+        "title": "TestConnectionFailed",
+        "type": "object",
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "title": "TestConnectionFailedFlag",
+            "type": "boolean",
+            "enum": [
+              false
+            ]
+          },
+          "error": {
+            "title": "TestConnectionError",
+            "type": "string"
+          }
+        }
+      },
+      "BootstrapKeyRecord": {
+        "title": "BootstrapKeyRecord",
+        "description": "Outcome of cluster.connection.bootstrapKey.",
+        "type": "object",
+        "required": [
+          "installed",
+          "alreadyPresent"
+        ],
+        "properties": {
+          "installed": {
+            "title": "BootstrapKeyInstalled",
+            "description": "True when the DevStation public key now reaches `~/.ssh/authorized_keys` on the remote (either we just appended it or it was already there).",
+            "type": "boolean"
+          },
+          "alreadyPresent": {
+            "title": "BootstrapKeyAlreadyPresent",
+            "description": "True if the key was already present before we connected \u2014 nothing was written. False if we appended it now.",
+            "type": "boolean"
+          },
+          "pmxcfsDetected": {
+            "title": "BootstrapKeyPmxcfsDetected",
+            "description": "True when the remote's authorized_keys is a symlink into Proxmox cluster filesystem (/etc/pve/priv/) \u2014 the install path went through the chmod-write-chmod dance.",
+            "type": "boolean"
+          },
+          "backupPath": {
+            "title": "BootstrapKeyBackupPath",
+            "description": "Absolute path to the backup of authorized_keys created before any write. Absent when alreadyPresent is true (no backup needed).",
+            "type": "string"
+          }
+        }
+      },
+      "ClusterRecord": {
+        "title": "ClusterRecord",
+        "type": "object",
+        "description": "Cluster summary for listing \u2014 includes provider tag, connection flag, version, creation audit and an optional provider-specific summary slot.",
+        "required": [
+          "id",
+          "name",
+          "provider",
+          "connected",
+          "version",
+          "creation"
+        ],
+        "properties": {
+          "id": {
+            "title": "ClusterId",
+            "type": "string"
+          },
+          "name": {
+            "title": "ClusterName",
+            "type": "string"
+          },
+          "provider": {
+            "title": "ClusterProvider",
+            "type": "string"
+          },
+          "connected": {
+            "title": "ClusterConnected",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "ClusterVersion",
+            "type": "integer"
+          },
+          "creation": {
+            "$ref": "#/components/schemas/ClusterCreation"
+          },
+          "proxmox": {
+            "$ref": "#/components/schemas/ClusterProxmoxSummary"
+          }
+        }
+      },
+      "ExecutionStarted": {
+        "title": "ExecutionStarted",
+        "type": "object",
+        "description": "Ack of a long-running execution: the server returns the executionId so the UI can attach via execution.watch(executionId).",
+        "required": [
+          "executionId"
+        ],
+        "properties": {
+          "executionId": {
+            "title": "ExecutionId",
+            "type": "string"
+          }
+        }
+      },
+      "ClusterEvent": {
+        "title": "ClusterEvent",
+        "description": "Tagged union of domain events published on a cluster's bus topic. Discriminated by `type`. Carries `eventId`/`occurredAt` for traceability and `clusterId`/`nodeId` for routing. Phase 2A enriches the completed/destroyed variants with `summary` payloads \u2014 for now the wire shape mirrors the in-process events one-to-one.",
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/NodePlanStartedV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodePlanSucceededV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodePlanFailedV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeApplyStartedV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeApplySucceededV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeApplyFailedV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeDestroyStartedV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeDestroySucceededV1"
+          },
+          {
+            "$ref": "#/components/schemas/NodeDestroyFailedV1"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type"
+        }
+      },
+      "NodePlanStartedV1": {
+        "title": "NodePlanStartedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-plan-started"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodePlanSucceededV1": {
+        "title": "NodePlanSucceededV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-plan-succeeded"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodePlanFailedV1": {
+        "title": "NodePlanFailedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-plan-failed"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeApplyStartedV1": {
+        "title": "NodeApplyStartedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-apply-started"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeApplySucceededV1": {
+        "title": "NodeApplySucceededV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-apply-succeeded"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeApplyFailedV1": {
+        "title": "NodeApplyFailedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-apply-failed"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeDestroyStartedV1": {
+        "title": "NodeDestroyStartedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-destroy-started"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeDestroySucceededV1": {
+        "title": "NodeDestroySucceededV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-destroy-succeeded"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "NodeDestroyFailedV1": {
+        "title": "NodeDestroyFailedV1",
+        "type": "object",
+        "required": [
+          "type",
+          "eventId",
+          "occurredAt",
+          "clusterId",
+          "nodeId"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "node-destroy-failed"
+            ]
+          },
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "clusterId": {
+            "type": "string"
+          },
+          "nodeId": {
+            "type": "string"
+          }
+        }
+      },
+      "ClusterEventNotification": {
+        "title": "ClusterEventNotification",
+        "description": "Params shape for the server-initiated `cluster.event` notification (mirrors ExecutionEventNotification).",
+        "type": "object",
+        "required": [
+          "clusterId",
+          "event"
+        ],
+        "properties": {
+          "clusterId": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/ClusterEvent"
+          }
+        }
+      },
+      "ClusterProvisioningPlanResult": {
+        "title": "ClusterProvisioningPlanResult",
+        "type": "object",
+        "description": "Typed result of cluster.proxmox.provisioning.plan.",
+        "required": [
+          "nodes"
+        ],
+        "properties": {
+          "nodes": {
+            "title": "ClusterProvisioningPlanNodes",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClusterProvisioningPlanNode"
+            }
+          }
+        }
+      },
+      "ClusterProvisioningPlanNode": {
+        "title": "ClusterProvisioningPlanNode",
+        "type": "object",
+        "description": "Plan change counts for a single (node, environment) pair.",
+        "required": [
+          "node",
+          "environment",
+          "toCreate",
+          "toUpdate",
+          "toDelete"
+        ],
+        "properties": {
+          "node": {
+            "title": "NodeName",
+            "type": "string"
+          },
+          "environment": {
+            "title": "EnvironmentName",
+            "type": "string"
+          },
+          "toCreate": {
+            "title": "PlanToCreate",
+            "type": "integer"
+          },
+          "toUpdate": {
+            "title": "PlanToUpdate",
+            "type": "integer"
+          },
+          "toDelete": {
+            "title": "PlanToDelete",
+            "type": "integer"
+          }
+        }
+      },
+      "ClusterProvisioningApplyResult": {
+        "title": "ClusterProvisioningApplyResult",
+        "type": "object",
+        "description": "Typed result of cluster.proxmox.provisioning.apply.",
+        "required": [
+          "nodes"
+        ],
+        "properties": {
+          "nodes": {
+            "title": "ClusterProvisioningApplyNodes",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClusterProvisioningApplyNode"
+            }
+          }
+        }
+      },
+      "ClusterProvisioningApplyNode": {
+        "title": "ClusterProvisioningApplyNode",
+        "type": "object",
+        "description": "Apply resource counts for a single (node, environment) pair.",
+        "required": [
+          "node",
+          "environment",
+          "created",
+          "updated",
+          "deleted"
+        ],
+        "properties": {
+          "node": {
+            "title": "NodeName",
+            "type": "string"
+          },
+          "environment": {
+            "title": "EnvironmentName",
+            "type": "string"
+          },
+          "created": {
+            "title": "ApplyCreated",
+            "type": "integer"
+          },
+          "updated": {
+            "title": "ApplyUpdated",
+            "type": "integer"
+          },
+          "deleted": {
+            "title": "ApplyDeleted",
+            "type": "integer"
+          }
+        }
+      },
+      "ClusterProvisioningDestroyResult": {
+        "title": "ClusterProvisioningDestroyResult",
+        "type": "object",
+        "description": "Typed result of cluster.proxmox.provisioning.destroy.",
+        "required": [
+          "nodes"
+        ],
+        "properties": {
+          "nodes": {
+            "title": "ClusterProvisioningDestroyNodes",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClusterProvisioningDestroyNode"
+            }
+          }
+        }
+      },
+      "ClusterProvisioningDestroyNode": {
+        "title": "ClusterProvisioningDestroyNode",
+        "type": "object",
+        "description": "Destroy deletion count for a single (node, environment) pair.",
+        "required": [
+          "node",
+          "environment",
+          "deleted"
+        ],
+        "properties": {
+          "node": {
+            "title": "NodeName",
+            "type": "string"
+          },
+          "environment": {
+            "title": "EnvironmentName",
+            "type": "string"
+          },
+          "deleted": {
+            "title": "DestroyDeleted",
+            "type": "integer"
+          }
+        }
+      }
+    }
+  }
+}

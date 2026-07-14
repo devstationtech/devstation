@@ -1,0 +1,12 @@
+#cloud-config
+# Minimal cloud-init: just enable SSH password auth so the bootstrap pipeline
+# can connect. Anything else (qemu-guest-agent, packages, etc.) is the
+# responsibility of stacks running afterward via SSH — keeping cloud-init small
+# means it terminates in seconds instead of minutes/never.
+ssh_pwauth: true
+chpasswd:
+  expire: false
+runcmd:
+  - sed -i 's/^#*\s*PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config 2>/dev/null || true
+  - find /etc/ssh/sshd_config.d/ -type f -name "*.conf" -exec sed -i 's/^#*\s*PasswordAuthentication.*/PasswordAuthentication yes/' {} \; 2>/dev/null || true
+  - systemctl restart sshd 2>/dev/null || systemctl restart ssh 2>/dev/null

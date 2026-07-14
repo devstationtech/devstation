@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/devstationtech/devstation/main/blueprints/blueprint.v1.schema.json
+name: docker
+description: Container runtime (Docker CE) with compose plugin
+version: 1.0.0
+compatibility:
+  os: [ubuntu-22-04, debian-12]
+
+roles:
+  - name: main
+    instances: one
+    install:
+      - name: install
+        description: Install Docker CE, CLI, containerd and compose plugin
+        script: scripts/install.sh
+        verify:
+          run: command -v docker >/dev/null 2>&1
+
+      - name: enable
+        description: Enable and start Docker daemon
+        run: sudo systemctl enable --now docker
+        verify:
+          run: systemctl is-enabled docker >/dev/null 2>&1
+
+      - name: grant-docker-group
+        description: Allow the automation user to talk to the Docker daemon without sudo
+        run: |
+          sudo usermod -aG docker "$(whoami)"
+        verify:
+          run: id -nG "$(whoami)" | grep -qw docker
+
+    uninstall:
+      - name: remove-docker
+        description: Stop Docker daemon, purge packages and wipe data/repo artifacts
+        run: |
+          sudo systemctl stop docker.socket docker 2>/dev/null || true
+          sudo apt-get purge -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin 2>/dev/null || true
+          sudo apt-get autoremove -y 2>/dev/null || true
+          sudo rm -rf /var/lib/docker /var/lib/containerd
+          sudo rm -f /etc/apt/sources.list.d/docker.list /etc/apt/keyrings/docker.gpg
+        verify:
+          run: "! command -v docker >/dev/null 2>&1"

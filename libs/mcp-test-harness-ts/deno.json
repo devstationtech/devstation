@@ -1,0 +1,4 @@
+{
+  "name": "@devstation/mcp-test-harness-ts",
+  "exports": "./src/mod.ts"
+}

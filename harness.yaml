@@ -1,0 +1,14 @@
+version: 3
+selections:
+  - kind: rule
+    name: code-standards
+    source: local
+  - kind: skill
+    name: blueprint-dsl
+    source: local
+  - kind: skill
+    name: contributing
+    source: local
+  - kind: skill
+    name: low-level-design
+    source: local
