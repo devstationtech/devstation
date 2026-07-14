@@ -5,8 +5,6 @@
 <div align="center">
 
 [![CI](https://github.com/devstationtech/devstation/actions/workflows/release.yml/badge.svg)](https://github.com/devstationtech/devstation/actions/workflows/release.yml)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=devstationtech_devstation&metric=coverage)](https://sonarcloud.io/summary/overall?id=devstationtech_devstation)
-[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=devstationtech_devstation&metric=alert_status)](https://sonarcloud.io/summary/overall?id=devstationtech_devstation)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
