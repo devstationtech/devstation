@@ -1,6 +1,6 @@
 # DevStation
 
-**Describe your homelab once. DevStation builds it — and rebuilds it — on demand.**
+**Describe your homelab topology once. DevStation builds it — and rebuilds it — on demand.**
 
 <div align="center">
 
