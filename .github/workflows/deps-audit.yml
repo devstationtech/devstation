@@ -1,0 +1,49 @@
+name: Dependency Audit
+
+# Dependabot cannot watch deno.lock, so advisories in Deno/npm dependencies
+# only surface when a PR happens to run the Quality gate. This scheduled run
+# closes that gap: it audits weekly and fails (notifying watchers) when a
+# high-severity advisory lands, and lists outdated direct dependencies in the
+# run summary for visibility.
+
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Mondays 09:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Audit (fails on high severity)
+        run: |
+          set -o pipefail
+          deno audit --level=high 2>&1 | tee audit.txt
+
+      - name: Full advisory report and outdated dependencies
+        if: always()
+        run: |
+          {
+            echo "## Dependency audit (all severities)"
+            echo '```'
+            deno audit 2>&1 || true
+            echo '```'
+            echo
+            echo "## Outdated direct dependencies"
+            echo '```'
+            deno outdated 2>&1 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

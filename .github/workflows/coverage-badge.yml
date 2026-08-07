@@ -1,0 +1,65 @@
+name: Coverage Badge
+
+# The quality gate is PR-only (main.yml), so nothing recomputes coverage when
+# a PR lands. This run does: on every push to main it measures coverage and
+# force-pushes a single-file `badges` branch with a shields.io endpoint JSON,
+# which the README badge points at. History on that branch is irrelevant.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  badge:
+    name: Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
+        with:
+          deno-version: v2.x
+
+      - name: Measure coverage
+        id: coverage
+        run: |
+          deno test -A --v8-flags=--max-old-space-size=4096 --coverage=coverage
+          deno coverage coverage --lcov --output=lcov.info --include=server/src/
+          percent="$(awk '
+            /^LF:/ { total += substr($0, 4) }
+            /^LH:/ { covered += substr($0, 4) }
+            END { printf "%.1f", (total > 0) ? (covered / total) * 100 : 0 }
+          ' lcov.info)"
+          echo "Coverage: ${percent}%"
+          echo "percent=${percent}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish badge JSON to the badges branch
+        env:
+          PERCENT: ${{ steps.coverage.outputs.percent }}
+        run: |
+          color="red"
+          threshold_check() { awk -v v="$PERCENT" -v m="$1" 'BEGIN { print (v >= m) }'; }
+          if [ "$(threshold_check 90)" = "1" ]; then color="brightgreen"
+          elif [ "$(threshold_check 80)" = "1" ]; then color="green"
+          elif [ "$(threshold_check 70)" = "1" ]; then color="yellowgreen"
+          elif [ "$(threshold_check 60)" = "1" ]; then color="yellow"
+          elif [ "$(threshold_check 50)" = "1" ]; then color="orange"
+          fi
+
+          mkdir badge-out && cd badge-out
+          printf '{"schemaVersion":1,"label":"coverage","message":"%s%%","color":"%s"}\n' \
+            "$PERCENT" "$color" > coverage.json
+          git init -q -b badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coverage.json
+          git commit -q -m "badge: coverage ${PERCENT}%"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" badges

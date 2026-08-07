@@ -5,6 +5,7 @@
 <div align="center">
 
 [![CI](https://github.com/devstationtech/devstation/actions/workflows/release.yml/badge.svg)](https://github.com/devstationtech/devstation/actions/workflows/release.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdevstationtech%2Fdevstation%2Fbadges%2Fcoverage.json)](https://github.com/devstationtech/devstation/actions/workflows/coverage-badge.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -15,7 +16,7 @@
 [![MCP](https://img.shields.io/badge/MCP-server-6e56cf)](https://modelcontextprotocol.io)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20·%20macOS%20·%20Windows-informational)](#install)
 
-**[devstation.tech](https://devstation.tech)** · [Docs](https://devstation.tech/en/docs/concepts) · [Engineering blog](https://devstation.tech/en/engineering)
+**[devstation.tech](https://devstation.tech)** · [Docs](https://devstation.tech/en/docs/concepts)
 
 </div>
 
@@ -122,7 +123,7 @@ The engine exposes an MCP server in the same binary (`devstation mcp serve` /
 topology, provision nodes, install services and query the vault through the same
 boundary the TUI uses — destructive operations carry explicit risk metadata. The
 project's own e2e suite runs through this surface against a real Proxmox node;
-the [engineering blog](https://devstation.tech/en/engineering) tells that story.
+the engineering blog on [devstation.tech](https://devstation.tech) tells that story.
 
 ## Status
 
@@ -148,8 +149,8 @@ make build   # compile the single binary into dist/
 ## Architecture
 
 The engine is a hexagonal, DDD codebase; the Ink UI talks to it only over
-JSON-RPC/stdio, and the same engine exposes the MCP server. The
-[engineering blog](https://devstation.tech/en/engineering) documents the
+JSON-RPC/stdio, and the same engine exposes the MCP server. The engineering blog on
+[devstation.tech](https://devstation.tech) documents the
 decisions; [AGENTS.md](AGENTS.md) holds the conventions (rules and skills under
 `.agents/`), and [CONTRIBUTING.md](CONTRIBUTING.md) gets you started.
 
