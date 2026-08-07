@@ -5,6 +5,7 @@
 <div align="center">
 
 [![CI](https://github.com/devstationtech/devstation/actions/workflows/release.yml/badge.svg)](https://github.com/devstationtech/devstation/actions/workflows/release.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fdevstationtech%2Fdevstation%2Fbadges%2Fcoverage.json)](https://github.com/devstationtech/devstation/actions/workflows/coverage-badge.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
