@@ -40,12 +40,13 @@
       "params": [
         {
           "name": "password",
-          "description": "Master password (minimum 8 characters).",
+          "description": "Master password (8-128 characters).",
           "required": true,
           "schema": {
             "title": "MasterPassword",
             "type": "string",
-            "minLength": 8
+            "minLength": 8,
+            "maxLength": 128
           }
         }
       ],
@@ -87,7 +88,8 @@
           "required": true,
           "schema": {
             "title": "MasterPasswordVerify",
-            "type": "string"
+            "type": "string",
+            "maxLength": 128
           }
         }
       ],

@@ -62,7 +62,7 @@ export type AuthResourcesResponse = AuthResources;
 
 /** Request payload for `auth.configure`. */
 export interface AuthConfigureRequest {
-  /** Master password (minimum 8 characters). */
+  /** Master password (8-128 characters). */
   readonly password: string;
 }
 

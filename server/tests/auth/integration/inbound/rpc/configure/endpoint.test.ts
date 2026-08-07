@@ -61,15 +61,29 @@ describe("auth.configure endpoint — integration", () => {
 
   it("should reject a new password shorter than the strong minimum", async () => {
     /* @Given an authentication context not yet configured */
-    /* @When the client configures with a password under 16 characters */
+    /* @When the client configures with a password under 8 characters */
     /* @Then the server replies with a failure signalling the weak password */
     await assertRejects(
       () =>
         rpc.invoke<AuthConfigureResponse>("auth.configure", {
-          password: "only-12chars",
+          password: "1234567",
         }),
       Exception,
-      "new passwords must be at least 16 characters.",
+      "new passwords must be at least 8 characters.",
+    );
+  });
+
+  it("should reject a new password longer than the maximum", async () => {
+    /* @Given an authentication context not yet configured */
+    /* @When the client configures with a password over 128 characters */
+    /* @Then the server replies with a failure signalling the oversized password */
+    await assertRejects(
+      () =>
+        rpc.invoke<AuthConfigureResponse>("auth.configure", {
+          password: "x".repeat(129),
+        }),
+      Exception,
+      "password must be at most 128 characters.",
     );
   });
 });

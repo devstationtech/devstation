@@ -36,6 +36,10 @@ export function ConfigurePasswordForm({ onConfigured, onCancel }: Props) {
       setResult({ type: "error", summary: "password must be at least 8 characters" });
       return;
     }
+    if (values.password.length > 128) {
+      setResult({ type: "error", summary: "password must be at most 128 characters" });
+      return;
+    }
     if (values.password !== values.confirm) {
       setResult({ type: "error", summary: "passwords do not match" });
       return;
@@ -83,7 +87,7 @@ export function ConfigurePasswordForm({ onConfigured, onCancel }: Props) {
               type: "string",
               name: "password",
               label: "password",
-              description: "minimum 8 characters",
+              description: "8-128 characters",
               required: true,
               mask: "*",
             },
