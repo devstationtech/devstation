@@ -96,6 +96,14 @@ jobs:
           echo "Coverage: ${coverage_percent}"
           echo "percent=${coverage_percent}" >> "$GITHUB_OUTPUT"
 
+          # Minimum gate — measured 76% when introduced; raise as coverage grows.
+          minimum=70
+          value="${coverage_percent%\%}"
+          if [ "$coverage_percent" != "n/a" ] && [ "$(awk -v v="$value" -v m="$minimum" 'BEGIN { print (v < m) }')" = "1" ]; then
+            echo "Coverage ${coverage_percent} is below the ${minimum}% minimum." >&2
+            exit 1
+          fi
+
       - name: Dependency audit
         id: audit
         run: |
