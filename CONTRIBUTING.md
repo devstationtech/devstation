@@ -54,8 +54,7 @@ behind platform facades so the runtime stays swappable.
 
 When in doubt, the existing code of the `cluster` and `station` contexts is the reference
 implementation of the project's standards. The engineering blog on
-[devstation.tech](https://devstation.tech) covers the reasoning behind these
-decisions.
+[devstation.tech](https://devstation.tech) covers the reasoning behind these decisions.
 
 ## AI agents & the harness
 
