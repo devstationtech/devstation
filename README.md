@@ -127,7 +127,12 @@ the engineering blog on [devstation.tech](https://devstation.tech) tells that st
 
 ## Status
 
-DevStation is **pre-alpha** (v0.1.x). It is used daily against real homelabs and
+DevStation is **pre-alpha** (v0.1.x). At this stage it is **not recommended for
+production environments**: the initial focus is homelabs and development
+environments — infrastructure of low or no criticality. Keep in mind that the
+MCP server can be configured to allow destructive actions, so use it wisely.
+
+It is used daily against real homelabs and
 the full suite — unit, integration, architecture and MCP e2e — gates every
 release, but the topology model and the blueprint DSL may still change between
 versions. Your data lives under `~/.devstation` (topology, vault, user
