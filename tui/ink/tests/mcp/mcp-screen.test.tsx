@@ -4,6 +4,7 @@ import { describe, it } from "@std/testing/bdd";
 import { render } from "ink-testing-library";
 import { McpScreen } from "@ui/mcp/index.tsx";
 import { type RpcClients, RpcClientsProvider } from "@ui/rpc-clients-provider.tsx";
+import { ALL_SCOPE_OPTIONS, MCP_SCOPE_GROUPS } from "@ui/mcp/scope-catalog.ts";
 import { SessionProvider } from "@ui/auth/session-provider.tsx";
 import type { AuthTokenGenerateRequest, AuthTokenState } from "@jsonrpc-contracts-ts/auth.gen.ts";
 
@@ -125,6 +126,46 @@ describe("McpScreen", () => {
     assertEquals((minted as unknown as AuthTokenGenerateRequest).scopes, ["clusters:read"]);
     assertEquals((minted as unknown as AuthTokenGenerateRequest).ttlDays, null);
     assertStringIncludes(lastFrame() ?? "", "MCP token minted");
+
+    unmount();
+  });
+
+  it("keeps every catalogue scope reachable and the list stable while navigating", async () => {
+    /* @Given no token, and the operator opens the scope picker */
+    const { stdin, lastFrame, unmount } = setup({
+      currentToken: () => Promise.resolve({ present: false } as AuthTokenState),
+    });
+    await flush();
+    stdin.write("g");
+    await flush();
+
+    /* @Then the first Clusters rows the regression dropped are visible up front */
+    const firstFrame = lastFrame() ?? "";
+    assertStringIncludes(firstFrame, "Clusters");
+    assertStringIncludes(firstFrame, "View clusters, nodes and VMs"); // clusters:read
+    assertStringIncludes(firstFrame, "Preview provisioning (plan)"); // clusters:provision:plan
+
+    /* @When the operator walks the cursor across the whole list */
+    const frames: string[] = [firstFrame];
+    for (let i = 0; i < ALL_SCOPE_OPTIONS.length - 1; i++) {
+      stdin.write("[B");
+      await flush();
+      frames.push(lastFrame() ?? "");
+    }
+
+    /* @Then no frame overflows the terminal height (the pre-fix overlap bug) */
+    for (const frame of frames) {
+      assertEquals(frame.split("\n").length <= 30, true);
+    }
+
+    /* @And every scope in the catalogue was rendered at some point */
+    const union = frames.join("\n");
+    for (const option of ALL_SCOPE_OPTIONS) {
+      assertStringIncludes(union, option.description);
+    }
+    for (const group of MCP_SCOPE_GROUPS) {
+      assertStringIncludes(union, group.label);
+    }
 
     unmount();
   });
