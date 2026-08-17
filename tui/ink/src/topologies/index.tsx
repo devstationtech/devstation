@@ -190,10 +190,11 @@ export function TopologiesScreen({ onBack }: Props) {
             rows={rows}
             columns={[
               { key: "resource" },
-              { key: "description" },
+              { key: "description", maxWidth: 40, grow: true },
               { key: "statistics", align: "right" },
             ]}
             focusedIndex={cursor}
+            limit="auto"
             emptyMessage=""
           />
         )}

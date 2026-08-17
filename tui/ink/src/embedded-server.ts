@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { fromFileUrl } from "@std/path";
 import { executableName, markExecutable } from "@ui/shared/platform/executables.ts";
 import { ensureRuntimeAssets } from "@ui/embedded-assets.ts";
 import { denoRuntime } from "@ui/shared/platform/mod.ts";
@@ -62,8 +63,14 @@ export async function resolveEngineCommand(): Promise<{
   }
 
   // Dev fallback: standalone engine entry from source. Won't exist in
-  // a compiled binary — only when running via `deno run`.
-  return { command: "./server/bin/devstation-server", args: [] };
+  // a compiled binary — only when running via `deno run`. Resolved
+  // against this module, not `Deno.cwd()` — `deno task --cwd tui/ink
+  // dev` (make run) runs with `tui/ink` as cwd, where a cwd-relative
+  // `./server/bin` does not exist.
+  return {
+    command: fromFileUrl(new URL("../../../server/bin/devstation-server", import.meta.url)),
+    args: [],
+  };
 }
 
 async function propagateWrapperSidecarDir(): Promise<void> {
