@@ -28,6 +28,7 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
   const [subscreen, setSubscreen] = useState<Subscreen>("list");
   const [revealedId, setRevealedId] = useState<string | null>(null);
   const [revealedValue, setRevealedValue] = useState<string | null>(null);
+  const [infoId, setInfoId] = useState<string | null>(null);
 
   const reload = () =>
     vaultClient.listSecrets({ sessionId, vaultId: vault.id }).then((list) => {
@@ -35,6 +36,7 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
       setCursor((c) => Math.min(c, Math.max(0, list.length - 1)));
       setRevealedId(null);
       setRevealedValue(null);
+      setInfoId(null);
     });
 
   useEffect(() => {
@@ -79,6 +81,10 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
     if (!secrets || secrets.length === 0) return;
     if (key.return) {
       if (focusedSecret) toggleReveal(focusedSecret);
+      return;
+    }
+    if (input === "i") {
+      if (focusedSecret) setInfoId((id) => id === focusedSecret.id ? null : focusedSecret.id);
       return;
     }
     if (input === "r") {
@@ -146,6 +152,7 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
 
   const hasItems = (secrets?.length ?? 0) > 0;
   const isRevealed = focusedSecret?.id === revealedId;
+  const infoSecret = focusedSecret?.id === infoId ? focusedSecret : null;
 
   const rows = (secrets ?? []).map((s) => ({
     name: s.name,
@@ -160,7 +167,7 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
       footer={
         <HelpBar>
           {hasItems
-            ? "g generate   ↵ reveal/hide   r rename   d delete   esc back"
+            ? "g generate   ↵ reveal/hide   i info   r rename   d delete   esc back"
             : "g generate   esc back"}
         </HelpBar>
       }
@@ -170,14 +177,28 @@ export function VaultDetailScreen({ vault, onBack }: Props) {
           <Table
             rows={rows}
             columns={[
-              { key: "name" },
-              { key: "description" },
-              { key: "created by" },
+              { key: "name", maxWidth: 28 },
+              { key: "description", maxWidth: 40, grow: true },
+              { key: "created by", maxWidth: 16 },
               { key: "created at" },
             ]}
             focusedIndex={hasItems ? cursor : undefined}
+            limit="auto"
+            reservedRows={16 + (isRevealed ? 2 : 0) + (infoSecret ? 5 : 0)}
             emptyMessage="No secrets found. Press g to generate one."
           />
+        )}
+        {infoSecret && (
+          // Expands downward only: the description wraps to full width below
+          // the table instead of widening its column.
+          <Box flexDirection="column">
+            <DimText>{infoSecret.name}</DimText>
+            <Text wrap="wrap">{infoSecret.description ?? "—"}</Text>
+            <DimText>
+              id {infoSecret.id} · created by {infoSecret.createdBy} at{" "}
+              {infoSecret.createdAt.slice(0, 10)}
+            </DimText>
+          </Box>
         )}
         {isRevealed && focusedSecret && (
           <Box gap={2}>

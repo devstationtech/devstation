@@ -79,9 +79,10 @@ export function BlueprintScreen({ onBack }: Props) {
             { key: "name" },
             { key: "source" },
             { key: "kind", maxWidth: 28 },
-            { key: "description", maxWidth: 40 },
+            { key: "description", maxWidth: 40, grow: true },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No blueprints available. Add your own under ~/.devstation/blueprints/<name>/blueprint.yaml."
         />
       )}

@@ -139,11 +139,12 @@ export function StationScreen({ onBack }: Props) {
           rows={rows}
           columns={[
             { key: "name" },
-            { key: "description" },
+            { key: "description", maxWidth: 40, grow: true },
             { key: "status" },
             { key: "services" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No stations registered yet. Press r to register one."
         />
       )}

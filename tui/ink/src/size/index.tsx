@@ -113,6 +113,7 @@ export function SizeScreen({ onBack }: Props) {
             { key: "disk", align: "right" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No sizes found. Press r to register one."
         />
       )}

@@ -106,6 +106,7 @@ export function ServiceScreen({ onBack }: Props) {
             { key: "last install" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No services registered yet."
         />
       )}
