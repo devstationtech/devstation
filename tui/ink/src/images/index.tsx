@@ -224,6 +224,7 @@ export function ImagesScreen({ onBack }: Props) {
             { key: "in use", align: "right" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No images registered. Press r to register one."
         />
       )}

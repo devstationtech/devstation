@@ -133,7 +133,7 @@ export function BlueprintDetailScreen({ blueprintName, onBack }: Props) {
             columns={[
               { key: "role" },
               { key: "step" },
-              { key: "description", maxWidth: 60 },
+              { key: "description", maxWidth: 60, grow: true },
               { key: "verify" },
               { key: "rollback" },
             ]}

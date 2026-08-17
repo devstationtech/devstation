@@ -141,10 +141,11 @@ export function VaultScreen({ onBack }: Props) {
         <Table
           rows={rows}
           columns={[
-            { key: "name" },
+            { key: "name", maxWidth: 32 },
             { key: "version", align: "right" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No vaults found. Press c to create one."
         />
       )}

@@ -440,6 +440,8 @@ function NodesTab({ nodes, cursor, setCursor, onSubscreen }: NodesTabProps) {
         { key: "virtualMachines", align: "right" },
       ]}
       focusedIndex={nodes.length > 0 ? cursor : undefined}
+      limit="auto"
+      reservedRows={18}
       emptyMessage="No nodes found. Press r to register one."
     />
   );
