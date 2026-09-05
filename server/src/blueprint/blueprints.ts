@@ -28,10 +28,18 @@ export type BlueprintSource = { readonly fs: FileSystem; readonly origin: Bluepr
  * one of the same name. Each entry keeps its `origin` so read models can mark
  * local blueprints. A missing source directory simply contributes nothing.
  *
- * Caches the catalog after the first load.
+ * Caches the catalog, validated against the disk on every read: the cache is
+ * keyed by a fingerprint of each source's blueprint dirs and their
+ * `blueprint.yaml` mtimes, so a `blueprint register` from ANOTHER process
+ * (the CLI writing to the shared user dir) is picked up by a long-running
+ * engine (MCP) on its next read — no reconnect, no reload tool. The stat
+ * sweep is a few dozen syscalls; parsing only re-runs when something
+ * actually changed. Callers that must stay atomic (an install execution)
+ * resolve their Blueprint once up front — invalidation only affects the
+ * next resolution, never a running execution.
  */
 export class Blueprints {
-  private cache: Map<string, BlueprintEntry> | null = null;
+  private cache: { fingerprint: string; map: Map<string, BlueprintEntry> } | null = null;
   private readonly sources: readonly BlueprintSource[];
 
   constructor(source: FileSystem | readonly BlueprintSource[]) {
@@ -68,7 +76,8 @@ export class Blueprints {
   }
 
   private async loadAll(): Promise<Map<string, BlueprintEntry>> {
-    if (this.cache) return this.cache;
+    const fingerprint = await this.fingerprint();
+    if (this.cache && this.cache.fingerprint === fingerprint) return this.cache.map;
     const map = new Map<string, BlueprintEntry>();
     for (const source of this.sources) {
       for (const dirName of await source.fs.listDirs()) {
@@ -76,8 +85,20 @@ export class Blueprints {
         if (blueprint) map.set(blueprint.name.value, { blueprint, origin: source.origin });
       }
     }
-    this.cache = map;
+    this.cache = { fingerprint, map };
     return map;
+  }
+
+  /** Dirs and entrypoint mtimes across all sources — cheap staleness probe. */
+  private async fingerprint(): Promise<string> {
+    const parts: string[] = [];
+    for (const source of this.sources) {
+      for (const dirName of (await source.fs.listDirs()).sort()) {
+        const mtime = await source.fs.subdir(dirName).modifiedAt(ENTRYPOINT);
+        parts.push(`${source.origin}:${dirName}:${mtime ?? "-"}`);
+      }
+    }
+    return parts.join("|");
   }
 
   private async loadFromDir(fs: FileSystem, dirName: string): Promise<Blueprint | null> {
