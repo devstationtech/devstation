@@ -226,25 +226,76 @@ describe("Blueprints — layered sources (official + user-local overlay)", () =>
   });
 });
 
-describe("Blueprints — caching", () => {
-  it("caches the catalog so a second list() does not re-scan disk", async () => {
+describe("Blueprints — disk-validated caching", () => {
+  it("picks up a blueprint registered on disk after the first scan", async () => {
     await inTempDir(async (dir) => {
       /* @Given a catalog that has been listed once */
       await writeBlueprint(dir, "docker");
       const catalog = new Blueprints(new FileSystem(dir));
-      const first = await catalog.list();
+      assertEquals((await catalog.list()).length, 1);
 
-      /* @When a new blueprint is added on disk AFTER the first scan */
+      /* @When a new blueprint lands on disk (a `blueprint register` from
+         another process — the reconnect-the-MCP pain) */
       await writeBlueprint(dir, "k3s");
 
-      /* @And list() is called again */
+      /* @Then the next read sees it without any reload/reconnect */
       const second = await catalog.list();
+      assertEquals(second.map((b) => b.name.value).sort(), ["docker", "k3s"]);
+      assertEquals(await catalog.contains(new Name("k3s")), true);
+    });
+  });
 
-      /* @Then the second call still reflects the cached snapshot (no rescan) */
-      /*       Documents the cache behavior — if invalidation is added later, */
-      /*       this test must be revised together with the new semantics. */
-      assertEquals(second.length, first.length);
-      assertEquals(second.map((b) => b.name.value).sort(), ["docker"]);
+  it("re-parses a blueprint whose entrypoint changed on disk", async () => {
+    await inTempDir(async (dir) => {
+      /* @Given a listed catalog with the original description */
+      await writeBlueprint(dir, "docker");
+      const catalog = new Blueprints(new FileSystem(dir));
+      assertEquals((await catalog.of(new Name("docker"))).description.value, "docker blueprint");
+
+      /* @When the yaml is edited (mtime bumped explicitly — same-ms writes
+         must not hide the change) */
+      await writeBlueprint(
+        dir,
+        "docker",
+        aBlueprintYaml("docker").replace("docker blueprint", "docker v2"),
+      );
+      const future = new Date(Date.now() + 5_000);
+      await Deno.utime(join(dir, "docker", "blueprint.yaml"), future, future);
+
+      /* @Then the next resolution returns the edited version */
+      assertEquals((await catalog.of(new Name("docker"))).description.value, "docker v2");
+    });
+  });
+
+  it("drops a blueprint removed from disk", async () => {
+    await inTempDir(async (dir) => {
+      /* @Given a listed catalog with two blueprints */
+      await writeBlueprint(dir, "docker");
+      await writeBlueprint(dir, "k3s");
+      const catalog = new Blueprints(new FileSystem(dir));
+      assertEquals((await catalog.list()).length, 2);
+
+      /* @When one is deleted on disk */
+      await Deno.remove(join(dir, "k3s"), { recursive: true });
+
+      /* @Then the next read no longer offers it */
+      assertEquals((await catalog.list()).map((b) => b.name.value), ["docker"]);
+      assertEquals(await catalog.contains(new Name("k3s")), false);
+    });
+  });
+
+  it("reuses the cached parse while the disk is unchanged", async () => {
+    await inTempDir(async (dir) => {
+      /* @Given a listed catalog */
+      await writeBlueprint(dir, "docker");
+      const catalog = new Blueprints(new FileSystem(dir));
+      const first = await catalog.of(new Name("docker"));
+
+      /* @When nothing on disk changes between reads */
+      const second = await catalog.of(new Name("docker"));
+
+      /* @Then the same parsed instance is served (no re-parse) */
+      assertEquals(first === second, true);
     });
   });
 });

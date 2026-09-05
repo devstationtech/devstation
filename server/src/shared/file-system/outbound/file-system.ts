@@ -80,6 +80,17 @@ export class FileSystem {
     return Deno.remove(join(this.dir, filename));
   }
 
+  /** Last-modified time of `filename` in epoch milliseconds, or null when missing. */
+  async modifiedAt(filename: string): Promise<number | null> {
+    try {
+      const info = await Deno.stat(join(this.dir, filename));
+      return info.mtime?.getTime() ?? null;
+    } catch (error) {
+      if (error instanceof Deno.errors.NotFound) return null;
+      throw error;
+    }
+  }
+
   async list(): Promise<string[]> {
     const names: string[] = [];
     try {
