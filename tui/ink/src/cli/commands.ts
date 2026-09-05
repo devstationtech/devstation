@@ -9,6 +9,7 @@ import { installShutdownHandlers } from "@ui/cli/signals.ts";
 import { resolveEngineCommand } from "@ui/embedded-server.ts";
 import { detectTheme } from "@ui/shared/theme/detect.ts";
 import { applyStagedUpdate } from "@ui/self-update/boot-applier.ts";
+import { runUpdateCheck } from "@ui/self-update/update-command.ts";
 import { denoRuntime } from "@ui/shared/platform/mod.ts";
 
 const { terminal, process } = denoRuntime;
@@ -149,4 +150,17 @@ export const command = new Command()
             process.exit(result.ok ? 0 : 1);
           }),
       ),
+  )
+  .command(
+    "update",
+    new Command()
+      .description(
+        "Check for a newer DevStation release against the live manifest, " +
+          "bypassing the 24h check cache (and refreshing it). Check-only: " +
+          "install from the TUI's update screen.",
+      )
+      .option("--check", "Explicit check-only flag (the default behavior).")
+      .action(async () => {
+        process.exit(await runUpdateCheck());
+      }),
   );
