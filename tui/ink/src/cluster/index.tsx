@@ -141,6 +141,7 @@ export function ClusterScreen({ onBack }: Props) {
             { key: "version", align: "right" },
           ]}
           focusedIndex={hasItems ? cursor : undefined}
+          limit="auto"
           emptyMessage="No clusters found. Press r to register one."
         />
       )}

@@ -477,7 +477,7 @@ function VirtualMachinesTab(
         { key: "", bright: true },
         { key: "name" },
         { key: "vmid", align: "right" },
-        { key: "tags" },
+        { key: "tags", maxWidth: 24, grow: true },
         { key: "ip" },
         { key: "cpu" },
         { key: "ram (GiB)" },
@@ -485,6 +485,8 @@ function VirtualMachinesTab(
         { key: "uptime", align: "right" },
       ]}
       focusedIndex={virtualMachines.length > 0 ? cursor : undefined}
+      limit="auto"
+      reservedRows={18}
       emptyMessage="No virtual machines found. Press r to register one."
     />
   );
@@ -532,6 +534,8 @@ function ImagesTab({ assignments, cursor, setCursor, onSubscreen }: ImagesTabPro
         { key: "storage" },
       ]}
       focusedIndex={assignments.length > 0 ? cursor : undefined}
+      limit="auto"
+      reservedRows={18}
       emptyMessage="No images assigned to this node. Press r to assign one."
     />
   );

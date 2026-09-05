@@ -483,6 +483,8 @@ function ServicesTab(
           { key: "last install" },
         ]}
         focusedIndex={ordered.length === 0 ? undefined : cursor}
+        limit="auto"
+        reservedRows={19}
         emptyMessage="No services. Press 'n' to add one."
       />
     </Box>
@@ -606,6 +608,8 @@ function PickerTab(
           { key: "depends" },
         ]}
         focusedIndex={ordered.length === 0 ? undefined : cursor}
+        limit="auto"
+        reservedRows={19}
         emptyMessage="No services."
       />
     </Box>
