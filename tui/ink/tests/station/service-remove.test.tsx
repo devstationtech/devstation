@@ -50,7 +50,8 @@ function mockClients(
 }
 
 const session = { sessionId: crypto.randomUUID(), expiresAt: "2099-01-01T00:00:00.000Z" };
-const flush = () => new Promise((r) => setTimeout(r, 40));
+// Allow Ink to process input and commit the next frame before asserting.
+const flush = () => new Promise((r) => setTimeout(r, 150));
 
 function setup(services: StationServiceRecord[], onUnregister: () => Promise<unknown>) {
   return render(
