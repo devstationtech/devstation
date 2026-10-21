@@ -1,6 +1,7 @@
 /// <reference types="@types/react" />
 import { useEffect, useState } from "react";
 import { Box, Text, useInput } from "ink";
+import type { ImageRegisterRequest } from "@jsonrpc-contracts-ts/image.gen.ts";
 import { useCluster, useImage } from "@ui/rpc-clients-provider.tsx";
 import { useSessionId } from "@ui/auth/session-provider.tsx";
 import { currentHost, currentUser } from "@ui/cli/paths.ts";
@@ -15,9 +16,10 @@ import { DimText } from "@ui/shared/theme/mod.ts";
 const OS_LABELS: Record<string, string> = {
   "ubuntu-22-04": "Ubuntu 22.04 LTS",
   "ubuntu-24-04": "Ubuntu 24.04 LTS",
+  "ubuntu-26-04": "Ubuntu 26.04 LTS",
   "debian-12": "Debian 12 (Bookworm)",
   "debian-13": "Debian 13 (Trixie)",
-};
+} satisfies Record<ImageRegisterRequest["os"], string>;
 
 type Option = { label: string; value: string };
 
@@ -89,7 +91,7 @@ export function ImageForm({ mode, image, onBack, onSaved }: Props) {
   const handleSubmit = (values: Record<string, string>) => {
     setSubmittedName(values.name);
     setSubmitting(true);
-    const os = values.os as "ubuntu-22-04" | "ubuntu-24-04" | "debian-12";
+    const os = values.os as ImageRegisterRequest["os"];
     const promise = mode === "create"
       ? imageApi.register({
         sessionId,
