@@ -37,6 +37,27 @@ describe("image.register endpoint — integration", () => {
     assertEquals(records[0].creation.by, "alice");
   });
 
+  it("registers an Ubuntu 26.04 cloud image", async () => {
+    /* @Given an Ubuntu 26.04 cloud image */
+    const sourceUrl = "https://cloud-images.example/26.04.img";
+
+    /* @When the image is registered */
+    await rpc.invoke<ImageRegisterResponse>("image.register", {
+      sessionId: STUB_SESSION_ID,
+      name: "ubuntu-2604",
+      os: "ubuntu-26-04",
+      sourceUrl,
+      user: "alice",
+      hostname: "homelab",
+    });
+
+    /* @Then its operating system and source are preserved */
+    const records = await persistence.readImages();
+    const image = records.find((record) => record.name === "ubuntu-2604");
+    assertEquals(image?.os, "ubuntu-26-04");
+    assertEquals(image?.sourceUrl, sourceUrl);
+  });
+
   it("rejects a duplicate name", async () => {
     await rpc.invoke<ImageRegisterResponse>("image.register", {
       sessionId: STUB_SESSION_ID,

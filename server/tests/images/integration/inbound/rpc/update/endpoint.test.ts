@@ -40,14 +40,14 @@ describe("image.update endpoint — integration", () => {
       sessionId: STUB_SESSION_ID,
       id,
       name: "ubuntu-2204",
-      os: "debian-12",
+      os: "ubuntu-26-04",
       sourceUrl: "https://x/new.img",
     });
 
     /* @Then the change is persisted */
     const records = await persistence.readImages();
     assertEquals(records.length, 1);
-    assertEquals(records[0].os, "debian-12");
+    assertEquals(records[0].os, "ubuntu-26-04");
     assertEquals(records[0].sourceUrl, "https://x/new.img");
   });
 });

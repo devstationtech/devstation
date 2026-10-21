@@ -1,3 +1,4 @@
+import { OperatingSystem } from "@server/shared/building-blocks/domain/models/value-objects/operating-system.ts";
 import { assertEquals } from "@std/assert";
 import { describe, it } from "@std/testing/bdd";
 import { RegisterImageMcpEndpoint } from "@server/images/inbound/mcp/register/endpoint.ts";
@@ -54,6 +55,23 @@ function fakeAllImagesQuery(records: unknown[]): AllImagesQuery {
 }
 
 describe("RegisterImageMcpEndpoint", () => {
+  it("advertises every supported operating system, including Ubuntu 26.04", () => {
+    /* @Given the supported operating systems and the image register tool */
+    const { handler } = fakeRegisterHandler();
+    const endpoint = new RegisterImageMcpEndpoint(handler);
+
+    /* @When its operating system choices are requested */
+    const properties = endpoint.inputSchema.properties as Record<
+      string,
+      { enum: readonly string[] }
+    >;
+
+    /* @Then every supported system is available without a separate allowlist */
+    assertEquals(properties.os.enum, OperatingSystem.values());
+    assertEquals(properties.os.enum.includes("ubuntu-26-04"), true);
+    assertEquals(properties.os.enum.includes("debian-13"), true);
+  });
+
   it("declares mutating wire metadata", () => {
     const { handler } = fakeRegisterHandler();
     const endpoint = new RegisterImageMcpEndpoint(handler);
@@ -83,6 +101,23 @@ describe("RegisterImageMcpEndpoint", () => {
 });
 
 describe("UpdateImageMcpEndpoint", () => {
+  it("advertises every supported operating system, including Ubuntu 26.04", () => {
+    /* @Given the supported operating systems and the image update tool */
+    const { handler } = fakeUpdateHandler();
+    const endpoint = new UpdateImageMcpEndpoint(handler);
+
+    /* @When its operating system choices are requested */
+    const properties = endpoint.inputSchema.properties as Record<
+      string,
+      { enum: readonly string[] }
+    >;
+
+    /* @Then every supported system is available without a separate allowlist */
+    assertEquals(properties.os.enum, OperatingSystem.values());
+    assertEquals(properties.os.enum.includes("ubuntu-26-04"), true);
+    assertEquals(properties.os.enum.includes("debian-13"), true);
+  });
+
   it("declares mutating wire metadata", () => {
     const { handler } = fakeUpdateHandler();
     const endpoint = new UpdateImageMcpEndpoint(handler);

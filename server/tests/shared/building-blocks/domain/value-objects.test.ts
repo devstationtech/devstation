@@ -184,6 +184,7 @@ describe("OperatingSystem", () => {
     /* @Then it round-trips to the matching enum member */
     assertEquals(OperatingSystem.from("ubuntu-22-04"), OperatingSystem.UBUNTU_22_04);
     assertEquals(OperatingSystem.from("ubuntu-24-04"), OperatingSystem.UBUNTU_24_04);
+    assertEquals(OperatingSystem.from("ubuntu-26-04"), OperatingSystem.UBUNTU_26_04);
     assertEquals(OperatingSystem.from("debian-12"), OperatingSystem.DEBIAN_12);
   });
 
@@ -195,10 +196,11 @@ describe("OperatingSystem", () => {
   });
 
   it("values() exposes only the supported members (not the merged helpers)", () => {
-    /* @Then the enumerated set is exactly the three OS strings */
+    /* @Then the enumerated set is exactly the supported OS strings */
     assertEquals([...OperatingSystem.values()], [
       "ubuntu-22-04",
       "ubuntu-24-04",
+      "ubuntu-26-04",
       "debian-12",
       "debian-13",
     ]);

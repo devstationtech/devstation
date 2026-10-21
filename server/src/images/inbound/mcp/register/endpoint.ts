@@ -1,3 +1,4 @@
+import { OperatingSystem } from "@server/shared/building-blocks/domain/models/value-objects/operating-system.ts";
 import type { Endpoint } from "@server/shared/inbound/mcp/endpoint/endpoint.ts";
 import type { JsonSchema } from "@server/shared/inbound/mcp/json-schema.ts";
 import type { RegisterImageHandler } from "@server/images/application/handlers/register-image-handler.ts";
@@ -30,7 +31,7 @@ export class RegisterImageMcpEndpoint
       name: slugSchema({
         description: "Image name. Lowercase slug — letters, digits and hyphens only. Max 64 chars.",
       }),
-      os: { type: "string", enum: ["ubuntu-22-04", "ubuntu-24-04", "debian-12", "debian-13"] },
+      os: { type: "string", enum: OperatingSystem.values() },
       sourceUrl: { type: "string", description: "ISO / cloud-image download URL (http/https)." },
       user: {
         type: "string",

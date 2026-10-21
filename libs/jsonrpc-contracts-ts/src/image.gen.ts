@@ -28,7 +28,7 @@ export type Ack = Record<string, unknown>;
 export interface ImageRegisterRequest {
   readonly sessionId: string;
   readonly name: string;
-  readonly os: "ubuntu-22-04" | "ubuntu-24-04" | "debian-12" | "debian-13";
+  readonly os: "ubuntu-22-04" | "ubuntu-24-04" | "ubuntu-26-04" | "debian-12" | "debian-13";
   readonly sourceUrl: string;
   readonly user: string;
   readonly hostname: string;
@@ -42,7 +42,7 @@ export interface ImageUpdateRequest {
   readonly sessionId: string;
   readonly id: string;
   readonly name: string;
-  readonly os: "ubuntu-22-04" | "ubuntu-24-04" | "debian-12" | "debian-13";
+  readonly os: "ubuntu-22-04" | "ubuntu-24-04" | "ubuntu-26-04" | "debian-12" | "debian-13";
   readonly sourceUrl: string;
 }
 

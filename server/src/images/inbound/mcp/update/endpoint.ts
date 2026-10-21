@@ -1,3 +1,4 @@
+import { OperatingSystem } from "@server/shared/building-blocks/domain/models/value-objects/operating-system.ts";
 import type { Endpoint } from "@server/shared/inbound/mcp/endpoint/endpoint.ts";
 import type { JsonSchema } from "@server/shared/inbound/mcp/json-schema.ts";
 import type { UpdateImageHandler } from "@server/images/application/handlers/update-image-handler.ts";
@@ -20,7 +21,7 @@ export class UpdateImageMcpEndpoint
     properties: {
       id: { type: "string" },
       name: { type: "string" },
-      os: { type: "string", enum: ["ubuntu-22-04", "ubuntu-24-04", "debian-12"] },
+      os: { type: "string", enum: OperatingSystem.values() },
       sourceUrl: { type: "string" },
     },
     required: ["id", "name", "os", "sourceUrl"],

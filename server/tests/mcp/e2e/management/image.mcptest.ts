@@ -6,7 +6,7 @@
  * Endpoints: image_register, _list, _update, _remove.
  */
 import { describe, it } from "@std/testing/bdd";
-import { assert } from "@std/assert";
+import { assert, assertEquals } from "@std/assert";
 import { mcp } from "../harness.ts";
 import { IMAGE } from "../fixtures.ts";
 
@@ -21,11 +21,11 @@ interface ImageRow {
 describe("Image catalog management", () => {
   const client = mcp();
 
-  it("registers an image, lists it, updates it, and cleans up", async () => {
-    /* @Given a registered catalog image */
+  it("registers an Ubuntu 26.04 image, lists it, updates it, and cleans up", async () => {
+    /* @Given an Ubuntu 26.04 catalog image */
     const { imageId } = await client().parsed<{ imageId: string }>(
       "devstation_image_register",
-      { ...IMAGE },
+      { ...IMAGE, os: "ubuntu-26-04" },
     );
     assert(imageId, "register should echo the new image id");
 
@@ -33,12 +33,14 @@ describe("Image catalog management", () => {
     const listed = await client().parsed<ImageRow[]>("devstation_image_list", {});
     const mine = listed.find((i) => i.id === imageId);
     assert(mine, "registered image should be listed");
+    assertEquals(mine.os, "ubuntu-26-04");
     assert(Array.isArray(mine.usages) && mine.usages.length === 0, "a fresh image has no usage");
 
     /* @When the image source is updated */
     await client().parsed("devstation_image_update", {
       id: imageId,
       ...IMAGE,
+      os: "ubuntu-26-04",
       sourceUrl: "https://example.invalid/e2e-image-v2.qcow2",
     });
 
