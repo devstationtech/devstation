@@ -367,7 +367,7 @@
     },
     {
       "name": "cluster.operatingSystems.list",
-      "description": "Operating systems supported by cluster images. Today: ubuntu-22-04, ubuntu-24-04, debian-12. Authoritative source for UI image-form OS pickers \u2014 never inferred client-side.",
+      "description": "Operating systems supported by cluster images. The server exposes the supported values from its OperatingSystem model. Authoritative source for UI image-form OS pickers \u2014 never inferred client-side.",
       "params": [
         {
           "name": "sessionId",

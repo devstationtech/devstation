@@ -1,6 +1,7 @@
 export enum OperatingSystem {
   UBUNTU_22_04 = "ubuntu-22-04",
   UBUNTU_24_04 = "ubuntu-24-04",
+  UBUNTU_26_04 = "ubuntu-26-04",
   DEBIAN_12 = "debian-12",
   DEBIAN_13 = "debian-13",
 }
